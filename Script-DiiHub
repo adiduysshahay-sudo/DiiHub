@@ -28,6 +28,7 @@ local AllowedUsernames = {
     "Bapex1708",
     "adefabian7",
     "Hantu_belau2",
+    "Celvin_tin", 
 }
 
 local AllowedUserIds = {
@@ -121,7 +122,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -110, 1, 0)
 Title.Position = UDim2.fromOffset(15, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "鉁� DiiUi HUB"
+Title.Text = " DiiUi HUB"
 Title.TextColor3 = WHITE
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 19
@@ -143,7 +144,7 @@ local function topButton(txt, x)
 end
 
 local MinButton = topButton("-", -82)
-local CloseButton = topButton("脳", -42)
+local CloseButton = topButton("-", -42)
 
 --====================================
 -- DiiUi HUB: DRAG (semua jendela & tombol mini bisa digeser)
@@ -472,7 +473,7 @@ else
     local fallback = Instance.new("TextLabel")
     fallback.Size = UDim2.fromScale(1, 1)
     fallback.BackgroundTransparency = 1
-    fallback.Text = "鉁�"
+    fallback.Text = "1"
     fallback.TextColor3 = Color3.fromRGB(255, 90, 160)
     fallback.Font = Enum.Font.GothamBold
     fallback.TextSize = 20
@@ -721,8 +722,8 @@ local function slider(titleText, minV, maxV, startV, step, onChange, fmt)
         Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
         return b
     end
-    local minus = mini("鈼€", -68)
-    local plus = mini("鈻�", -36)
+    local minus = mini("1", -68)
+    local plus = mini("2", -36)
 
     local value = math.clamp(tonumber(startV) or minV, minV, maxV)
     local function render()
@@ -1104,36 +1105,36 @@ end
 local function graphicsTab()
     clearContent()
     label("GRAPHICS SETTINGS")
-    button("馃幀  Cinematic", function() preset("Cinematic") notify("Cinematic aktif") end)
-    button("馃尗  Kabut", function() preset("Kabut") notify("Kabut aktif") end)
-    button("馃拵  Ultra HD", function() preset("UltraHD") notify("Ultra HD aktif") end)
-    button("馃寛  Vibrant (Anime)", function() preset("Vibrant") notify("Vibrant aktif") end)
-    button("馃寖  Cyberpunk Neon", function() preset("Cyberpunk") notify("Cyberpunk aktif") end)
-    button("馃摻  Vintage", function() preset("Vintage") notify("Vintage aktif") end)
+    button("  Cinematic", function() preset("Cinematic") notify("Cinematic aktif") end)
+    button("  Kabut", function() preset("Kabut") notify("Kabut aktif") end)
+    button("  Ultra HD", function() preset("UltraHD") notify("Ultra HD aktif") end)
+    button("  Vibrant (Anime)", function() preset("Vibrant") notify("Vibrant aktif") end)
+    button("  Cyberpunk Neon", function() preset("Cyberpunk") notify("Cyberpunk aktif") end)
+    button("  Vintage", function() preset("Vintage") notify("Vintage aktif") end)
     button("HD Graphics", function() preset("HD") end)
     button("Low Graphics", function() preset("Low") end)
     button("Horror Mode", function() preset("Horror") end)
     button("Sunset Mode", function() preset("Sunset") end)
     button("Night Mode", function() preset("Night") end)
-    button("鈫�  Reset Graphics", function() preset("Reset") notify("Graphics direset") end)
+    button("  Reset Graphics", function() preset("Reset") notify("Graphics direset") end)
 end
 
 -- TELEPORT TAB: AUTO PLAYER LIST
 local function teleportTab()
     clearContent()
 
-    label("鉁� TELEPORT TO PLAYER")
+    label(" TELEPORT TO PLAYER")
     label("Pilih pemain dari daftar server:")
 
     local function refreshPlayers()
         clearContent()
 
-        label("鉁� TELEPORT TO PLAYER")
+        label(" TELEPORT TO PLAYER")
         label("PLAYER LIST - " .. #Players:GetPlayers() .. " PLAYERS")
 
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= LP then
-                button("鉃�  " .. player.Name, function()
+                butlabel"  " .. player.Name, function()
                     local target = player.Character
                     local targetRoot = target and
                         target:FindFirstChild("HumanoidRootPart")
@@ -1182,7 +1183,7 @@ end
 -- INVISIBLE TAB
 local function invisibleTab()
     clearContent()
-    label("馃懟 INVISIBLE")
+    label(" INVISIBLE")
     button(invisible and "Diri Sendiri: ON  (tap untuk matikan)" or "Diri Sendiri: OFF  (tap untuk aktifkan)", function()
         setInvisible(not invisible)
         invisibleTab()
@@ -1197,7 +1198,7 @@ local function invisibleTab()
         if p ~= LP then
             n += 1
             local hidden = shouldHide(p)
-            button((hidden and "馃毇  " or "馃憗  ") .. p.Name, function()
+            button((hidden and "1  " or "2  ") .. p.Name, function()
                 if hideAllPlayers then
                     notify("Matikan 'Sembunyikan SEMUA' dulu")
                     return
@@ -1208,7 +1209,7 @@ local function invisibleTab()
         end
     end
     if n == 0 then label("Belum ada pemain lain di server.") end
-    button("鉄�  Refresh Daftar", invisibleTab)
+    button("  Refresh Daftar", invisibleTab)
     label("Efek hanya terlihat di layar kamu sendiri (client).")
 end
 
@@ -1503,7 +1504,7 @@ local function limitedItemTab()
     clearContent()
     label("LIMITED ITEM VISUAL")
     label("Preview kosmetik lokal - hanya terlihat di client kamu.")
-    label("鈿� TEMPEL ASSET ID LALU GENERATE")
+    label(" TEMPEL ASSET ID LALU GENERATE")
     local idBox = textbox("Tempel Asset ID atau link katalog")
     idBox:GetPropertyChangedSignal("Text"):Connect(function()
         preloadAsset(tonumber(string.match(idBox.Text or "", "%d%d%d+")))
@@ -1521,11 +1522,11 @@ local function limitedItemTab()
             notify(err)
         end
     end
-    button("鈿� Generate & Pasang di Kepala", function() generate(false) end)
-    button("鈿� Generate & Pasang di Tangan", function() generate(true) end)
+    button(" Generate & Pasang di Kepala", function() generate(false) end)
+    button(" Generate & Pasang di Tangan", function() generate(true) end)
     label("ITEM PRESET")
     for _, item in ipairs(LimitedPresets) do
-        button("锛�  " .. item.Name, function()
+        button("  " .. item.Name, function()
             local ok, err = attachLimitedItem(item)
             if ok then
                 selectedLimited = item.Name
@@ -1553,7 +1554,7 @@ local function limitedItemTab()
     end
     label("Terpilih: " .. selectedLimited)
     local cfg = getLimitedConfig(selectedLimited)
-    label("Geser slider ke samping. 鈼€ 鈻� untuk atur halus.")
+    label("Geser slider ke samping.  untuk atur halus.")
     local fields = {
         {"Ukuran (%)", "Scale", 20, 300},
         {"Posisi X (kiri/kanan)", "X", -300, 300},
@@ -1641,7 +1642,7 @@ local PadHandle = Instance.new("TextButton")
 PadHandle.Size = UDim2.new(1, 0, 0, 24)
 PadHandle.BackgroundColor3 = PURPLE
 PadHandle.BackgroundTransparency = 0.25
-PadHandle.Text = "鉁� Free Cam"
+PadHandle.Text = " Free Cam"
 PadHandle.TextColor3 = WHITE
 PadHandle.Font = Enum.Font.GothamBold
 PadHandle.TextSize = 11
@@ -1678,12 +1679,12 @@ local function holdButton(txt, x, y, axis, dir)
         end
     end)
 end
-holdButton("鈻�", 52, 28, "Z", -1)
-holdButton("鈼€", 4, 76, "X", -1)
-holdButton("鈻�", 100, 76, "X", 1)
-holdButton("鈻�", 52, 124, "Z", 1)
-holdButton("鈬�", 4, 28, "Y", 1)
-holdButton("鈬�", 100, 28, "Y", -1)
+holdButton("1", 52, 28, "Z", -1)
+holdButton("2", 4, 76, "X", -1)
+holdButton("3", 100, 76, "X", 1)
+holdButton("4", 52, 124, "Z", 1)
+holdButton("5", 4, 28, "Y", 1)
+holdButton("6", 100, 28, "Y", -1)
 
 -- Kunci karakter: tombol gerak tidak menggerakkan karakter selama Free Cam
 local function lockCharacter(state)
@@ -2051,7 +2052,7 @@ local function toggleButton(text, getState, onToggle)
     local b
     local function paint()
         local on = getState()
-        b.Text = text .. (on and "  :  ON 鉁�" or "  :  OFF")
+        b.Text = text .. (on and "  :  ON " or "  :  OFF")
         b.BackgroundColor3 = on and Color3.fromRGB(40, 150, 90) or Color3.fromRGB(65, 39, 105)
     end
     b = button(text, function()
@@ -2199,13 +2200,13 @@ local function avatarTab()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LP then
             any = true
-            button("馃懁  " .. dn(player), function()
+            button(馃  " .. dn(player), function()
                 copyAvatar(player.UserId, player.Name)
             end)
         end
     end
     if not any then label("Belum ada pemain lain di server.") end
-    button("鈫�  Kembalikan Avatar Asli", restoreAvatar)
+    button("  Kembalikan Avatar Asli", restoreAvatar)
     label("PEMAIN DI LUAR SERVER (opsional)")
     avatarBox = textbox("Username atau UserId")
     button("Salin dari yang diketik", function()
@@ -2225,24 +2226,24 @@ end
 --====================================
 -- TEMPEL / BACKPACK V3
 -- Tap username -> langsung menempel. Gaya bisa diganti kapan saja saat menempel.
--- Lepas: lompat, tombol 鉁� di layar, atau tombol di menu.
+-- Lepas: lompat, tombol  di layar, atau tombol di menu.
 --====================================
 local Tempel = {Target = nil, StyleIdx = 1, T = 0, Saved = nil}
 local TempelStyles = {
-    {Name = "馃帓 Backpack (di punggung)", Fn = function(t) return CFrame.new(0, 0.2, 1.3) end},
-    {Name = "馃惔 Gendong naik punggung", Fn = function(t) return CFrame.new(0, 1.0, 0.9) * CFrame.Angles(math.rad(-12), 0, 0) end},
-    {Name = "馃Ω Superman di punggung", Fn = function(t) return CFrame.new(0, 1.1 + math.sin(t * 3) * 0.15, 1.5) * CFrame.Angles(math.rad(-90), 0, 0) end},
-    {Name = "馃泴 Dibawa sambil tiduran", Fn = function(t) return CFrame.new(0, 0.4, 1.6) * CFrame.Angles(math.rad(90), 0, 0) end},
-    {Name = "馃 Gantung terbalik", Fn = function(t) return CFrame.new(0, -0.3 + math.sin(t * 2) * 0.2, 1.3) * CFrame.Angles(0, 0, math.pi) end},
-    {Name = "馃悞 Duduk di kepala", Fn = function(t) return CFrame.new(0, 3.6, 0) end},
-    {Name = "馃 Nangkring di bahu", Fn = function(t) return CFrame.new(1.5, 2.4, 0.2) * CFrame.Angles(0, 0, math.rad(-8)) end},
-    {Name = "馃 Peluk dari depan", Fn = function(t) return CFrame.new(0, 0, -1.3) * CFrame.Angles(0, math.pi, 0) end},
-    {Name = "馃殎 Melayang di atas kepala", Fn = function(t) return CFrame.new(0, 6 + math.sin(t * 2) * 0.6, 0) * CFrame.Angles(0, t * 2, 0) end},
-    {Name = "馃寑 Mengorbit pemain", Fn = function(t) return CFrame.Angles(0, t * 1.8, 0) * CFrame.new(0, math.sin(t * 3) * 0.8, -5) * CFrame.Angles(0, math.pi, 0) end},
-    {Name = "馃拑 Muter-muter di depan", Fn = function(t) return CFrame.new(0, 0, -3.2) * CFrame.Angles(0, t * 8, 0) end},
-    {Name = "馃 Jalan bareng di samping", Fn = function(t) return CFrame.new(2.4, 0, 0.2) end},
-    {Name = "馃帰 Goyang-goyang di punggung", Fn = function(t) return CFrame.new(math.sin(t * 4) * 0.6, 0.2, 1.3) * CFrame.Angles(0, 0, math.sin(t * 4) * 0.3) end},
-    {Name = "馃惛 Loncat-loncat di kepala", Fn = function(t) return CFrame.new(0, 3.6 + math.abs(math.sin(t * 5)) * 2, 0) end},
+    {Name = " Backpack (di punggung)", Fn = function(t) return CFrame.new(0, 0.2, 1.3) end},
+    {Name = " Gendong naik punggung", Fn = function(t) return CFrame.new(0, 1.0, 0.9) * CFrame.Angles(math.rad(-12), 0, 0) end},
+    {Name = " Superman di punggung", Fn = function(t) return CFrame.new(0, 1.1 + math.sin(t * 3) * 0.15, 1.5) * CFrame.Angles(math.rad(-90), 0, 0) end},
+    {Name = " Dibawa sambil tiduran", Fn = function(t) return CFrame.new(0, 0.4, 1.6) * CFrame.Angles(math.rad(90), 0, 0) end},
+    {Name = " Gantung terbalik", Fn = function(t) return CFrame.new(0, -0.3 + math.sin(t * 2) * 0.2, 1.3) * CFrame.Angles(0, 0, math.pi) end},
+    {Name = " Duduk di kepala", Fn = function(t) return CFrame.new(0, 3.6, 0) end},
+    {Name = " Nangkring di bahu", Fn = function(t) return CFrame.new(1.5, 2.4, 0.2) * CFrame.Angles(0, 0, math.rad(-8)) end},
+    {Name = " Peluk dari depan", Fn = function(t) return CFrame.new(0, 0, -1.3) * CFrame.Angles(0, math.pi, 0) end},
+    {Name = " Melayang di atas kepala", Fn = function(t) return CFrame.new(0, 6 + math.sin(t * 2) * 0.6, 0) * CFrame.Angles(0, t * 2, 0) end},
+    {Name = " Mengorbit pemain", Fn = function(t) return CFrame.Angles(0, t * 1.8, 0) * CFrame.new(0, math.sin(t * 3) * 0.8, -5) * CFrame.Angles(0, math.pi, 0) end},
+    {Name = " Muter-muter di depan", Fn = function(t) return CFrame.new(0, 0, -3.2) * CFrame.Angles(0, t * 8, 0) end},
+    {Name = " Jalan bareng di samping", Fn = function(t) return CFrame.new(2.4, 0, 0.2) end},
+    {Name = " Goyang-goyang di punggung", Fn = function(t) return CFrame.new(math.sin(t * 4) * 0.6, 0.2, 1.3) * CFrame.Angles(0, 0, math.sin(t * 4) * 0.3) end},
+    {Name = " Loncat-loncat di kepala", Fn = function(t) return CFrame.new(0, 3.6 + math.abs(math.sin(t * 5)) * 2, 0) end},
 }
 local TempelNames = {}
 for i, st in ipairs(TempelStyles) do TempelNames[i] = st.Name end
@@ -2255,7 +2256,7 @@ detachBtn.Name = "DiiUiDetach"
 detachBtn.Size = UDim2.fromOffset(140, 40)
 detachBtn.Position = UDim2.new(0.5, -70, 1, -90)
 detachBtn.BackgroundColor3 = Color3.fromRGB(190, 50, 80)
-detachBtn.Text = "鉁� Lepas Tempel"
+detachBtn.Text = " Lepas Tempel"
 detachBtn.TextColor3 = Color3.new(1, 1, 1)
 detachBtn.Font = Enum.Font.GothamBold
 detachBtn.TextSize = 13
@@ -2329,7 +2330,7 @@ local function startTempel(player)
             r.AssemblyAngularVelocity = Vector3.zero
         end)
     end
-    toast("Menempel ke " .. player.Name .. "  鈥�  gaya bisa diganti di menu")
+    toast("Menempel ke " .. player.Name .. "    gaya bisa diganti di menu")
     if updateTempelUI then updateTempelUI() end
 end
 
@@ -2341,7 +2342,7 @@ updateTempelUI = function()
     local ui = tempelUI
     if not (ui.status and ui.status.Parent) then return end
     if Tempel.Target then
-        ui.status.Text = "鉁� Menempel ke  " .. dn(Tempel.Target) .. "\nGaya: " .. TempelStyles[Tempel.StyleIdx].Name
+        ui.status.Text = " Menempel ke  " .. dn(Tempel.Target) .. "\nGaya: " .. TempelStyles[Tempel.StyleIdx].Name
         ui.detach.Visible = true
     else
         ui.status.Text = "Belum menempel\nTap username pemain di bawah"
@@ -2351,14 +2352,14 @@ updateTempelUI = function()
     for p, card in pairs(ui.cards) do
         local on = (Tempel.Target == p)
         card.BackgroundColor3 = on and PURPLE or CARD
-        if ui.subs[p] then ui.subs[p].Text = on and "鉁� sedang menempel" or "tap untuk menempel" end
+        if ui.subs[p] then ui.subs[p].Text = on and " sedang menempel" or "tap untuk menempel" end
     end
 end
 
 local function tempelTab()
     clearContent()
     tempelUI = {cards = {}, subs = {}}
-    label("馃帓 TEMPEL / BACKPACK V3")
+    label(" TEMPEL / BACKPACK V3")
 
     -- kartu status
     local f = Instance.new("Frame")
@@ -2385,7 +2386,7 @@ local function tempelTab()
     dt.Size = UDim2.fromOffset(88, 34)
     dt.Position = UDim2.new(1, -96, 0.5, -17)
     dt.BackgroundColor3 = Color3.fromRGB(190, 50, 80)
-    dt.Text = "鉁� Lepas"
+    dt.Text = " Lepas"
     dt.TextColor3 = WHITE
     dt.Font = Enum.Font.GothamBold
     dt.TextSize = 13
@@ -2401,7 +2402,7 @@ local function tempelTab()
         Tempel.T = 0
         updateTempelUI()
     end, 48)
-    button("馃幉  Gaya Acak", function()
+    button("  Gaya Acak", function()
         Tempel.StyleIdx = math.random(1, #TempelStyles)
         Tempel.T = 0
         updateTempelUI()
@@ -2492,14 +2493,14 @@ local noclipConn = RunService.Stepped:Connect(function()
 end)
 
 local AURAS = {
-    {Name = "馃挆 Pink DiiHub", C1 = Color3.fromRGB(255, 60, 140), C2 = Color3.fromRGB(255, 190, 230)},
-    {Name = "馃敟 Api Neon", C1 = Color3.fromRGB(255, 80, 10), C2 = Color3.fromRGB(255, 220, 70)},
-    {Name = "鈿� Petir Biru", C1 = Color3.fromRGB(40, 140, 255), C2 = Color3.fromRGB(200, 245, 255)},
-    {Name = "馃寣 Galaxy", C1 = Color3.fromRGB(140, 60, 255), C2 = Color3.fromRGB(60, 210, 255)},
-    {Name = "馃寛 Pelangi", Rainbow = true, C1 = Color3.fromRGB(255, 255, 255), C2 = Color3.fromRGB(255, 255, 255)},
-    {Name = "鉂� Es Kristal", C1 = Color3.fromRGB(130, 215, 255), C2 = Color3.fromRGB(255, 255, 255)},
-    {Name = "馃崁 Hijau Toxic", C1 = Color3.fromRGB(40, 255, 110), C2 = Color3.fromRGB(200, 255, 120)},
-    {Name = "馃枻 Dark Flame", C1 = Color3.fromRGB(110, 0, 160), C2 = Color3.fromRGB(255, 0, 80)},
+    {Name = " Pink DiiHub", C1 = Color3.fromRGB(255, 60, 140), C2 = Color3.fromRGB(255, 190, 230)},
+    {Name = " Api Neon", C1 = Color3.fromRGB(255, 80, 10), C2 = Color3.fromRGB(255, 220, 70)},
+    {Name = " Petir Biru", C1 = Color3.fromRGB(40, 140, 255), C2 = Color3.fromRGB(200, 245, 255)},
+    {Name = " Galaxy", C1 = Color3.fromRGB(140, 60, 255), C2 = Color3.fromRGB(60, 210, 255)},
+    {Name = " Pelangi", Rainbow = true, C1 = Color3.fromRGB(255, 255, 255), C2 = Color3.fromRGB(255, 255, 255)},
+    {Name = " Es Kristal", C1 = Color3.fromRGB(130, 215, 255), C2 = Color3.fromRGB(255, 255, 255)},
+    {Name = " Hijau Toxic", C1 = Color3.fromRGB(40, 255, 110), C2 = Color3.fromRGB(200, 255, 120)},
+    {Name = " Dark Flame", C1 = Color3.fromRGB(110, 0, 160), C2 = Color3.fromRGB(255, 0, 80)},
 }
 local AuraNames = {}
 for i, a in ipairs(AURAS) do AuraNames[i] = a.Name end
@@ -2699,7 +2700,7 @@ local FlyPadHandle = Instance.new("TextButton")
 FlyPadHandle.Size = UDim2.new(1, 0, 0, 24)
 FlyPadHandle.BackgroundColor3 = PINK
 FlyPadHandle.BackgroundTransparency = 0.2
-FlyPadHandle.Text = "鉁� Fly  (geser)"
+FlyPadHandle.Text = " Fly  (geser)"
 FlyPadHandle.TextColor3 = WHITE
 FlyPadHandle.Font = Enum.Font.GothamBold
 FlyPadHandle.TextSize = 11
@@ -2736,14 +2737,14 @@ local function flyHold(txt, x, dir)
         end
     end)
 end
-flyHold("鈻�", 8, 1)
-flyHold("鈻�", 78, -1)
+flyHold("1", 8, 1)
+flyHold("2", 78, -1)
 local flyStopBtn = Instance.new("TextButton")
 flyStopBtn.Size = UDim2.fromOffset(134, 38)
 flyStopBtn.Position = UDim2.fromOffset(8, 82)
 flyStopBtn.BackgroundColor3 = Color3.fromRGB(190, 50, 80)
 flyStopBtn.BackgroundTransparency = 0.15
-flyStopBtn.Text = "鉁� Stop Fly"
+flyStopBtn.Text = " Stop Fly"
 flyStopBtn.TextColor3 = WHITE
 flyStopBtn.Font = Enum.Font.GothamBold
 flyStopBtn.TextSize = 13
@@ -2856,7 +2857,7 @@ local function startFly()
 
         updateAura(r, math.min(frac, 1))
     end)
-    toast("Fly aktif  鈥�  WASD/joystick, Space naik, Ctrl turun")
+    toast("Fly aktif    WASD/joystick, Space naik, Ctrl turun")
     if Fly.OnChange then pcall(Fly.OnChange) end
 end
 
@@ -2889,11 +2890,11 @@ end)
 
 local function flyTab()
     clearContent()
-    label("馃晩 FLY & NOCLIP")
-    local flyBtn, paintFly = toggleButton("鉁�  FLY", function() return Fly.Enabled end, function()
+    label(" FLY & NOCLIP")
+    local flyBtn, paintFly = toggleButton("  FLY", function() return Fly.Enabled end, function()
         if Fly.Enabled then stopFly() else startFly() end
     end)
-    local ncBtn, paintNc = toggleButton("馃懟  NOCLIP (tembus tembok)", function() return NoClip.Enabled end, function()
+    local ncBtn, paintNc = toggleButton("  NOCLIP (tembus tembok)", function() return NoClip.Enabled end, function()
         NoClip.Enabled = not NoClip.Enabled
         toast("NoClip " .. (NoClip.Enabled and "ON" or "OFF"))
     end)
@@ -2902,12 +2903,12 @@ local function flyTab()
     slider("Kecepatan Terbang", 10, 300, Fly.Speed, 1, function(v) Fly.Speed = v end)
 
     label("AURA  (tap = langsung berganti)")
-    toggleButton("鉁�  Aura", function() return Fly.AuraOn end, function()
+    toggleButton("  Aura", function() return Fly.AuraOn end, function()
         Fly.AuraOn = not Fly.AuraOn
         local r = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
         if Fly.Enabled and r then buildAura(r) end
     end)
-    toggleButton("馃  Sayap Energi", function() return Fly.WingsOn end, function()
+    toggleButton("  Sayap Energi", function() return Fly.WingsOn end, function()
         Fly.WingsOn = not Fly.WingsOn
         local r = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
         if Fly.Enabled and r then buildAura(r) end
@@ -3068,7 +3069,7 @@ local alAddedConn = workspace.DescendantAdded:Connect(function(d)
         end)
         if not alFloodToast then
             alFloodToast = true
-            toast("馃寠 Banjir objek terdeteksi 鈥� dibersihkan")
+            toast(" Banjir objek terdeteksi  dibersihkan")
         end
     end
 end)
@@ -3110,7 +3111,7 @@ task.spawn(function()
                     alLowTicks = 0
                     AntiLag.SoundCap = true
                     setSafeMode(true)
-                    toast("馃洝 FPS rendah 鈥� Safe Mode otomatis aktif")
+                    toast(" FPS rendah  Safe Mode otomatis aktif")
                 end
             else
                 alLowTicks = 0
@@ -3159,7 +3160,7 @@ end)
 
 local function antiLagTab()
     clearContent()
-    label("馃洝 ANTI LAG / CRASH")
+    label(" ANTI LAG / CRASH")
 
     local statLabel = label("Memuat statistik...")
     statLabel.Font = Enum.Font.Gotham
@@ -3172,17 +3173,17 @@ local function antiLagTab()
             end)
             pcall(function() mem = math.floor(Stats:GetTotalMemoryUsageMb()) end)
             local f = AntiLag.FPS
-            local icon = f >= 45 and "馃煝" or (f >= 25 and "馃煛" or "馃敶")
+            local icon = f >= 45 and "1" or (f >= 25 and "2" or "3")
             statLabel.Text = string.format("%s FPS: %d   |   Ping: %s ms   |   RAM: %s MB",
                 icon, f, tostring(ping), tostring(mem))
             task.wait(0.5)
         end
     end)
 
-    local _, paintSafe = toggleButton("馃洝  Safe Mode (FPS Boost)",
+    local _, paintSafe = toggleButton("  Safe Mode (FPS Boost)",
         function() return AntiLag.SafeMode end,
         function() setSafeMode(not AntiLag.SafeMode) end)
-    local _, paintAuto = toggleButton("馃  Auto Guard (FPS drop 鈫� Safe Mode)",
+    local _, paintAuto = toggleButton("  Auto Guard (FPS droen Safe Mode)",
         function() return AntiLag.AutoGuard end,
         function()
             AntiLag.AutoGuard = not AntiLag.AutoGuard
@@ -3195,14 +3196,14 @@ local function antiLagTab()
         AntiLag.FpsLimit = v
     end)
 
-    toggleButton("馃寠  Anti Flood (spam part / efek)",
+    toggleButton("  Anti Flood (spam part / efek)",
         function() return AntiLag.Flood end,
         function() AntiLag.Flood = not AntiLag.Flood end)
     slider("Batas objek baru per detik", 100, 2000, AntiLag.FloodLimit, 50, function(v)
         AntiLag.FloodLimit = v
     end)
 
-    toggleButton("馃攪  Batasi Suara (anti sound spam)",
+    toggleButton("  Batasi Suara (anti sound spam)",
         function() return AntiLag.SoundCap end,
         function()
             AntiLag.SoundCap = not AntiLag.SoundCap
@@ -3212,12 +3213,12 @@ local function antiLagTab()
         AntiLag.MaxSounds = v
     end)
 
-    toggleButton("馃毇  Anti Fling (tabrakan & velocity)",
+    toggleButton("  Anti Fling (tabrakan & velocity)",
         function() return AntiLag.AntiFling end,
         function() AntiLag.AntiFling = not AntiLag.AntiFling end)
 
     label("Catatan: semua fitur ini bekerja di KLIENT (layarmu) saja.\n"
-        .. "Server tidak bisa diperbaiki dari sini 鈥� kalau server benar-benar "
+        .. "Server tidak bisa diperbaiki dari sini  kalau server benar-benar "
         .. "mati/lag berat, kamu tetap bisa terkena. Fitur ini mengurangi "
         .. "efeknya ke FPS & stabilitas game-mu.\n"
         .. "Anti Flood hanya menghapus part tidak-anchored, efek & suara yang "
@@ -3352,9 +3353,9 @@ do
         end
 
         if sat then
-            toast("馃洅 TP & duduk di " .. c.name)
+            toast(" TP & duduk di " .. c.name)
         else
-            toast("馃洅 TP dekat " .. c.name .. " 鈥� duduk manual jika belum")
+            toast(" TP dekat " .. c.name .. "  duduk manual jika belum")
         end
         return true
     end
@@ -3417,26 +3418,26 @@ do
 
     cartTab = function()
         clearContent()
-        label("馃洅 GROBAK")
+        label(" GROBAK")
 
-        button("鈿�  Auto TP ke Grobak Terdekat", function()
-            toast("馃攷 Memindai grobak...")
+        button("  Auto TP ke Grobak Terdekat", function()
+            toast(" Memindai grobak...")
             local c = scanCarts()[1]
             if c then
                 goToCart(c)
             else
-                toast("Grobak tidak ditemukan 鈥� coba ganti kata kunci di bawah")
+                toast("Grobak tidak ditemukan  coba ganti kata kunci di bawah")
             end
         end)
-        toggleButton("馃攣  Auto TP saat respawn",
+        toggleButton("  Auto TP saat respawn",
             function() return Cart.AutoRespawn end,
             function() Cart.AutoRespawn = not Cart.AutoRespawn end)
 
         label("KENDALI  (duduk di grobak dulu)")
-        toggleButton("馃暪  Kendali Grobak (WASD / joystick)",
+        toggleButton("  Kendali Grobak (WASD / joystick)",
             function() return Cart.Drive end,
             function() Cart.Drive = not Cart.Drive end)
-        toggleButton("鈫�  Grobak menghadap arah gerak",
+        toggleButton("  Grobak menghadap arah gerak",
             function() return Cart.Face end,
             function() Cart.Face = not Cart.Face end)
         slider("Kecepatan Grobak", 10, 150, Cart.Speed, 1, function(v)
@@ -3458,7 +3459,7 @@ do
         if #found == 0 then
             local allSeats = scanAllSeats()
             if #allSeats == 0 then
-                status.Text = "鉂� Tidak ada Seat/VehicleSeat apa pun yang ter-load di client.\n"
+                status.Text = " Tidak ada Seat/VehicleSeat apa pun yang ter-load di client.\n"
                     .. "Kemungkinan besar grobaknya belum ter-render (map pakai "
                     .. "StreamingEnabled & grobaknya jauh/belum terlihat), atau "
                     .. "grobak itu bukan Seat Roblox biasa (pakai sistem naik "
@@ -3466,8 +3467,8 @@ do
                     .. "grobaknya, lalu tekan Pindai Ulang."
             else
                 status.Text = string.format(
-                    "鈿� 0 cocok nama, tapi ada %d Seat lain ter-load.\n"
-                    .. "Tekan '馃攳 Tampilkan SEMUA Seat' di bawah untuk pilih manual.",
+                    " 0 cocok nama, tapi ada %d Seat lain ter-load.\n"
+                    .. "Tekan ' Tampilkan SEMUA Seat' di bawah untuk pilih manual.",
                     #allSeats)
             end
         else
@@ -3475,17 +3476,17 @@ do
             for i, c in ipairs(found) do
                 if i > 15 then break end
                 local dist = root and math.floor((c.seat.Position - root.Position).Magnitude) or 0
-                button(string.format("馃洅 %s  鈥�  %d stud", c.name, dist), function()
+                button(string.format(" %s    %d stud", c.name, dist), function()
                     goToCart(c)
                 end)
             end
         end
 
-        button("鈫�  Pindai ulang", function() cartTab() end)
+        button("  Pindai ulang", function() cartTab() end)
 
-        button("馃攳  Tampilkan SEMUA Seat (abaikan kata kunci)", function()
+        button("  Tampilkan SEMUA Seat (abaikan kata kunci)", function()
             clearContent()
-            label("馃攳 SEMUA SEAT YANG TER-LOAD")
+            label(" SEMUA SEAT YANG TER-LOAD")
             local all = scanAllSeats()
             if #all == 0 then
                 label("Tidak ada Seat/VehicleSeat sama sekali di client sekarang.\n"
@@ -3499,12 +3500,12 @@ do
                     if i > 25 then break end
                     local dist = r2 and math.floor((c.seat.Position - r2.Position).Magnitude) or 0
                     local path = c.seat:GetFullName()
-                    button(string.format("馃獞 %s  鈥�  %d stud\n%s", c.name, dist, path), function()
+                    button(string.format(" %s    %d stud\n%s", c.name, dist, path), function()
                         goToCart(c)
                     end)
                 end
             end
-            button("鈫� Kembali", function() cartTab() end)
+            button(" Kembali", function() cartTab() end)
         end)
 
         label("Catatan: kendali grobak butuh grobak yang fisiknya dipegang "
@@ -3662,7 +3663,7 @@ do
             rm.Size = UDim2.fromOffset(60, 34)
             rm.Position = UDim2.new(1, -68, 0.5, -17)
             rm.BackgroundColor3 = Color3.fromRGB(190, 50, 80)
-            rm.Text = "鉁� Hapus"
+            rm.Text = " Hapus"
             rm.TextColor3 = WHITE
             rm.Font = Enum.Font.GothamBold
             rm.TextSize = 12
@@ -3678,12 +3679,12 @@ do
 
     signTab = function()
         clearContent()
-        label("馃柤 GANTI GAMBAR PAPAN / SIGN")
+        label(" GANTI GAMBAR PAPAN / SIGN")
         label("Hanya tampil di layarmu sendiri. Orang lain tetap lihat gambar asli.")
 
         -- status target yang sedang dipilih
         if Sign.Selected and Sign.Selected.inst.Parent then
-            label("馃幆 Target dipilih: " .. Sign.Selected.name
+            label(" Target dipilih: " .. Sign.Selected.name
                 .. "  (tap papan lain untuk ganti target)")
         else
             Sign.Selected = nil
@@ -3691,7 +3692,7 @@ do
         end
 
         local idBox = textbox("Image Asset ID baru (angka / rbxassetid://...)")
-        button("鉁�  Terapkan ke Target", function()
+        button("  Terapkan ke Target", function()
             if not Sign.Selected or not Sign.Selected.inst.Parent then
                 toast("Pilih target papan dulu")
                 return
@@ -3700,20 +3701,20 @@ do
             if not uri then toast("Isi Image Asset ID yang valid dulu") return end
             local ok = applyImage(Sign.Selected, uri)
             if ok then
-                toast("鉁� Gambar " .. Sign.Selected.name .. " diganti")
+                toast(" Gambar " .. Sign.Selected.name .. " diganti")
                 signTab()
             else
                 toast("Gagal mengganti (properti terkunci?)")
             end
         end)
-        button("猸�  Simpan ID di atas sebagai Favorit", function()
+        button("  Simpan ID di atas sebagai Favorit", function()
             local uri = toAssetUri(idBox.Text)
             if not uri then toast("Isi Image Asset ID yang valid dulu") return end
             for _, f in ipairs(Sign.Favorites) do
                 if f.uri == uri then toast("Sudah ada di favorit") return end
             end
             table.insert(Sign.Favorites, 1, {uri = uri, label = idBox.Text})
-            toast("猸� Disimpan ke favorit")
+            toast(" Disimpan ke favorit")
             signTab()
         end)
 
@@ -3723,7 +3724,7 @@ do
 
         -- FAVORIT
         if #Sign.Favorites > 0 then
-            label("猸� FAVORIT  (tap = langsung terapkan ke target)")
+            label(" FAVORIT  (tap = langsung terapkan ke target)")
             for i, fav in ipairs(Sign.Favorites) do
                 imageCard({
                     preview = fav.uri,
@@ -3736,7 +3737,7 @@ do
                         end
                         local ok = applyImage(Sign.Selected, fav.uri)
                         if ok then
-                            toast("鉁� Diterapkan dari favorit")
+                            toast(" Diterapkan dari favorit")
                             signTab()
                         else
                             toast("Gagal mengganti (properti terkunci?)")
@@ -3757,19 +3758,19 @@ do
         if ActiveTab ~= signTab or not status.Parent then return end
 
         if #found == 0 then
-            status.Text = "鉂� Tidak ada Decal/Texture/ImageLabel dalam radius ini.\n"
+            status.Text = " Tidak ada Decal/Texture/ImageLabel dalam radius ini.\n"
                 .. "Perbesar radius di atas atau jalan mendekat ke papannya, lalu pindai ulang."
         else
-            status.Text = string.format("鉁� Ditemukan %d gambar (terdekat di atas)", #found)
+            status.Text = string.format(" Ditemukan %d gambar (terdekat di atas)", #found)
             for i, item in ipairs(found) do
                 if i > 20 then break end
                 local edited = Sign.Saved[item.inst] ~= nil
                 local isSel = Sign.Selected and Sign.Selected.inst == item.inst
                 imageCard({
                     preview = item.preview,
-                    title = (edited and "鉁� " or "") .. item.name,
+                    title = (edited and " " or "") .. item.name,
                     subtitle = string.format("%d stud%s", math.floor(item.dist),
-                        isSel and "  鈥�  target sekarang" or ""),
+                        isSel and "    target sekarang" or ""),
                     selected = isSel,
                     onClick = function()
                         Sign.Selected = item
@@ -3779,8 +3780,8 @@ do
             end
         end
 
-        button("鈫�  Pindai ulang", function() signTab() end)
-        button("鈫�  Kembalikan SEMUA ke gambar asli", function()
+        button("  Pindai ulang", function() signTab() end)
+        button("  Kembalikan SEMUA ke gambar asli", function()
             local n = revertAll()
             toast(n > 0 and ("Dikembalikan " .. n .. " gambar") or "Belum ada yang diganti")
             signTab()
@@ -3790,27 +3791,27 @@ do
             .. "ke akun Robloxmu sebagai Decal/Image) supaya tidak kena blokir "
             .. "moderasi konten. Favorit hanya tersimpan selama sesi/server ini "
             .. "berjalan (hilang kalau script dijalankan ulang). Beberapa "
-            .. "Decal/Texture dikunci server dan tidak bisa diubah dari client 鈥� "
+            .. "Decal/Texture dikunci server dan tidak bisa diubah dari client "
             .. "kalau gagal, biasanya itu sebabnya.")
     end
 end
 
 -- CREATE TABS
-makeTab("鈱�  Home", homeTab)
-makeTab("鈽€  Graphics", graphicsTab)
-makeTab("鉃�  Teleport", teleportTab)
-makeTab("鈼�  Spectator", spectatorTab)
-makeTab("馃懟  Invisible", invisibleTab)
-makeTab("鉁�  Limited Items", limitedItemTab)
-makeTab("鈼�  Free Cam", freeCamTab)
-makeTab("鈿�  Speed & Jump", moveTab)
-makeTab("馃晩  Fly & NoClip", flyTab)
-makeTab("馃洝  Anti Lag / Crash", antiLagTab)
-makeTab("馃洅  Grobak", cartTab)
-makeTab("馃柤  Ganti Gambar", signTab)
-makeTab("馃帓  Tempel / Backpack", tempelTab)
-makeTab("馃懁  Salin Avatar", avatarTab)
-makeTab("馃尶  Nana Coin Hutan", nanaCoinTab)
+makeTab(" Home", homeTab)
+makeTab(" Graphics", graphicsTab)
+makeTab(" Teleport", teleportTab)
+makeTab(" Spectator", spectatorTab)
+makeTab(" Invisible", invisibleTab)
+makeTab(" Limited Items", limitedItemTab)
+makeTab(" Free Cam", freeCamTab)
+makeTab(" Speed & Jump", moveTab)
+makeTab(" Fly & NoClip", flyTab)
+makeTab(" Anti Lag / Crash", antiLagTab)
+makeTab(" Grobak", cartTab)
+makeTab(" Ganti Gambar", signTab)
+makeTab(" Tempel / Backpack", tempelTab)
+makeTab(" Salin Avatar", avatarTab)
+makeTab(" Nana Coin Hutan", nanaCoinTab)
 
 homeTab()
 
