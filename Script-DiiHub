@@ -1,0 +1,923 @@
+--==================================================
+-- DiiUi HUB V2 | REAL EXECUTOR
+-- Client-side GUI and visual utilities
+--==================================================
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+local LP = Players.LocalPlayer
+
+--====================================
+-- DiiUi HUB | USERNAME WHITELIST
+-- Ganti username di bawah dengan username Roblox yang diizinkan.
+-- Username dibandingkan tanpa membedakan huruf besar/kecil.
+-- Catatan: whitelist LocalScript bukan perlindungan server-side.
+--====================================
+local AllowedUsers = {
+    ["Bapex1708"] = true,
+    ["Adediuszx"] = true, 
+}
+
+local function hasAccess(username)
+    local wanted = string.lower(username)
+    for allowedName, enabled in pairs(AllowedUsers) do
+        if enabled and string.lower(allowedName) == wanted then
+            return true
+        end
+    end
+    return false
+end
+
+if not hasAccess(LP.Name) then
+    warn("[DiiUi HUB] ACCESS DENIED: username tidak terdaftar.")
+    return
+end
+
+print("[DiiUi HUB] ACCESS GRANTED: " .. LP.Name)
+local PG = LP:WaitForChild("PlayerGui")
+local Camera = workspace.CurrentCamera
+
+-- REMOVE OLD GUI
+pcall(function()
+    local old = PG:FindFirstChild("DiiUiHUB")
+    if old then old:Destroy() end
+end)
+
+-- COLORS
+local PURPLE = Color3.fromRGB(145, 70, 255)
+local DARK = Color3.fromRGB(17, 14, 27)
+local PANEL = Color3.fromRGB(27, 22, 41)
+local WHITE = Color3.fromRGB(240, 235, 255)
+local GREY = Color3.fromRGB(160, 150, 180)
+
+-- GUI
+local Gui = Instance.new("ScreenGui")
+Gui.Name = "DiiUiHUB"
+Gui.ResetOnSpawn = false
+Gui.IgnoreGuiInset = false
+Gui.Parent = PG
+
+local Main = Instance.new("Frame")
+Main.Name = "Main"
+Main.Size = UDim2.fromOffset(650, 420)
+Main.Position = UDim2.new(0.5, -325, 0.5, -210)
+Main.BackgroundColor3 = DARK
+Main.BorderSizePixel = 0
+Main.Parent = Gui
+
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 12)
+Corner.Parent = Main
+
+local Stroke = Instance.new("UIStroke")
+Stroke.Color = PURPLE
+Stroke.Thickness = 1.5
+Stroke.Parent = Main
+
+-- TOP BAR
+local Top = Instance.new("Frame")
+Top.Size = UDim2.new(1, 0, 0, 48)
+Top.BackgroundColor3 = PANEL
+Top.BorderSizePixel = 0
+Top.Parent = Main
+
+local TopCorner = Instance.new("UICorner")
+TopCorner.CornerRadius = UDim.new(0, 12)
+TopCorner.Parent = Top
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -110, 1, 0)
+Title.Position = UDim2.fromOffset(15, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "✦ DiiUi HUB"
+Title.TextColor3 = WHITE
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 19
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Top
+
+local function topButton(txt, x)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.fromOffset(35, 30)
+    b.Position = UDim2.new(1, x, 0, 9)
+    b.BackgroundColor3 = PURPLE
+    b.Text = txt
+    b.TextColor3 = WHITE
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 16
+    b.Parent = Top
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 7)
+    return b
+end
+
+local MinButton = topButton("-", -82)
+local CloseButton = topButton("×", -42)
+
+--====================================
+-- DiiUi HUB: DRAG WINDOW
+--====================================
+
+local dragging = false
+local dragInput = nil
+local dragStart = nil
+local startPosition = nil
+
+Top.Active = true
+Title.Active = true
+
+local function beginDrag(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPosition = Main.Position
+    end
+end
+
+Top.InputBegan:Connect(beginDrag)
+Title.InputBegan:Connect(beginDrag)
+
+Top.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+    or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if dragging and (
+        input.UserInputType == Enum.UserInputType.MouseMovement
+        or input == dragInput
+    ) then
+        local delta = input.Position - dragStart
+        Main.Position = UDim2.new(
+            startPosition.X.Scale,
+            startPosition.X.Offset + delta.X,
+            startPosition.Y.Scale,
+            startPosition.Y.Offset + delta.Y
+        )
+    end
+end)
+
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+        dragInput = nil
+    end
+end)
+
+-- MINIMIZE TO SMALL BUTTON
+local miniButton = Instance.new("TextButton")
+miniButton.Name = "DiiUiMini"
+miniButton.Size = UDim2.fromOffset(115, 38)
+miniButton.Position = UDim2.new(0, 15, 0.4, 0)
+miniButton.BackgroundColor3 = Color3.fromRGB(65, 35, 110)
+miniButton.Text = "✦ DiiUi HUB"
+miniButton.TextColor3 = Color3.new(1, 1, 1)
+miniButton.Font = Enum.Font.GothamBold
+miniButton.TextSize = 13
+miniButton.Visible = false
+miniButton.Parent = Gui
+
+Instance.new("UICorner", miniButton).CornerRadius =
+    UDim.new(0, 9)
+
+-- KEYBOARD M: SHOW / HIDE MENU
+UIS.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed or UIS:GetFocusedTextBox() then
+        return
+    end
+
+    if input.KeyCode == Enum.KeyCode.M then
+        if miniButton.Visible then
+            miniButton.Visible = false
+            Main.Visible = true
+        else
+            Main.Visible = not Main.Visible
+        end
+    end
+end)
+
+MinButton.MouseButton1Click:Connect(function()
+    Main.Visible = false
+    miniButton.Visible = true
+end)
+
+miniButton.MouseButton1Click:Connect(function()
+    miniButton.Visible = false
+    Main.Visible = true
+end)
+
+-- CLOSE GUI
+CloseButton.MouseButton1Click:Connect(function()
+    Gui:Destroy()
+end)
+
+-- SIDEBAR
+local Side = Instance.new("Frame")
+Side.Position = UDim2.fromOffset(10, 58)
+Side.Size = UDim2.fromOffset(145, 350)
+Side.BackgroundColor3 = PANEL
+Side.BorderSizePixel = 0
+Side.Parent = Main
+Instance.new("UICorner", Side).CornerRadius = UDim.new(0, 9)
+
+local SideList = Instance.new("UIListLayout")
+SideList.Padding = UDim.new(0, 7)
+SideList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+SideList.SortOrder = Enum.SortOrder.LayoutOrder
+SideList.Parent = Side
+
+local SidePad = Instance.new("UIPadding")
+SidePad.PaddingTop = UDim.new(0, 10)
+SidePad.Parent = Side
+
+-- CONTENT
+local Content = Instance.new("ScrollingFrame")
+Content.Position = UDim2.fromOffset(165, 58)
+Content.Size = UDim2.fromOffset(475, 350)
+Content.BackgroundColor3 = PANEL
+Content.BorderSizePixel = 0
+Content.ScrollBarThickness = 4
+Content.ScrollBarImageColor3 = PURPLE
+Content.CanvasSize = UDim2.new()
+Content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Content.Parent = Main
+Instance.new("UICorner", Content).CornerRadius = UDim.new(0, 9)
+
+local ContentList = Instance.new("UIListLayout")
+ContentList.Padding = UDim.new(0, 8)
+ContentList.SortOrder = Enum.SortOrder.LayoutOrder
+ContentList.Parent = Content
+
+local ContentPad = Instance.new("UIPadding")
+ContentPad.PaddingTop = UDim.new(0, 12)
+ContentPad.PaddingLeft = UDim.new(0, 12)
+ContentPad.PaddingRight = UDim.new(0, 12)
+ContentPad.PaddingBottom = UDim.new(0, 12)
+ContentPad.Parent = Content
+
+local function clearContent()
+    for _, v in ipairs(Content:GetChildren()) do
+        if v:IsA("GuiObject") and v ~= ContentList
+        and v ~= ContentPad then
+            v:Destroy()
+        end
+    end
+end
+
+local function label(txt)
+    local l = Instance.new("TextLabel")
+    l.Size = UDim2.new(1, -5, 0, 28)
+    l.BackgroundTransparency = 1
+    l.Text = txt
+    l.TextColor3 = WHITE
+    l.Font = Enum.Font.GothamBold
+    l.TextSize = 15
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.Parent = Content
+    return l
+end
+
+local function button(txt, callback)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(1, -5, 0, 36)
+    b.BackgroundColor3 = Color3.fromRGB(65, 39, 105)
+    b.Text = txt
+    b.TextColor3 = WHITE
+    b.Font = Enum.Font.GothamSemibold
+    b.TextSize = 13
+    b.Parent = Content
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 7)
+
+    b.MouseButton1Click:Connect(function()
+        if callback then
+            local ok, err = pcall(callback)
+            if not ok then warn("[DiiUi HUB] " .. tostring(err)) end
+        end
+    end)
+    return b
+end
+
+local function textbox(placeholder)
+    local t = Instance.new("TextBox")
+    t.Size = UDim2.new(1, -5, 0, 36)
+    t.BackgroundColor3 = DARK
+    t.TextColor3 = WHITE
+    t.PlaceholderColor3 = GREY
+    t.PlaceholderText = placeholder
+    t.Text = ""
+    t.Font = Enum.Font.Gotham
+    t.TextSize = 13
+    t.ClearTextOnFocus = false
+    t.Parent = Content
+    Instance.new("UICorner", t).CornerRadius = UDim.new(0, 7)
+    return t
+end
+
+local function notify(msg)
+    label("✦ " .. msg)
+end
+
+-- PLAYER CHARACTER
+local function getCharacter()
+    return LP.Character or LP.CharacterAdded:Wait()
+end
+
+local function getHumanoid()
+    return getCharacter():WaitForChild("Humanoid")
+end
+
+-- GRAPHICS
+local oldLighting = {
+    Brightness = Lighting.Brightness,
+    ClockTime = Lighting.ClockTime,
+    FogEnd = Lighting.FogEnd,
+    GlobalShadows = Lighting.GlobalShadows,
+    Ambient = Lighting.Ambient,
+    OutdoorAmbient = Lighting.OutdoorAmbient
+}
+
+local function clearDiiEffects()
+    for _, v in ipairs(Lighting:GetChildren()) do
+        if v.Name:match("^DiiUi_") then
+            v:Destroy()
+        end
+    end
+end
+
+local function preset(name)
+    clearDiiEffects()
+
+    if name == "HD" then
+        Lighting.Brightness = 3
+        Lighting.GlobalShadows = true
+        Lighting.FogEnd = 100000
+    elseif name == "Low" then
+        Lighting.Brightness = 1
+        Lighting.GlobalShadows = false
+        Lighting.FogEnd = 100000
+    elseif name == "Horror" then
+        Lighting.Brightness = 0.5
+        Lighting.ClockTime = 0
+        Lighting.FogEnd = 100
+        local cc = Instance.new("ColorCorrectionEffect")
+        cc.Name = "DiiUi_Horror"
+        cc.TintColor = Color3.fromRGB(180, 190, 210)
+        cc.Contrast = 0.35
+        cc.Saturation = -0.7
+        cc.Parent = Lighting
+    elseif name == "Sunset" then
+        Lighting.ClockTime = 18
+        Lighting.Brightness = 2
+        local cc = Instance.new("ColorCorrectionEffect")
+        cc.Name = "DiiUi_Sunset"
+        cc.TintColor = Color3.fromRGB(255, 170, 110)
+        cc.Parent = Lighting
+    elseif name == "Night" then
+        Lighting.ClockTime = 0
+        Lighting.Brightness = 0.5
+    elseif name == "Fog" then
+        Lighting.FogEnd = 80
+        Lighting.FogStart = 5
+    elseif name == "Reset" then
+        for k, v in pairs(oldLighting) do
+            Lighting[k] = v
+        end
+        Lighting.FogStart = 0
+    end
+end
+
+-- INVISIBLE VISUAL
+local invisible = false
+local function setInvisible(state)
+    invisible = state
+    for _, obj in ipairs(getCharacter():GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.LocalTransparencyModifier = state and 1 or 0
+        end
+    end
+end
+
+-- SPECTATOR
+local spectating = false
+local function stopSpectate()
+    spectating = false
+    Camera.CameraSubject = getHumanoid()
+end
+
+local function spectatePlayer(name)
+    local target = Players:FindFirstChild(name)
+    if target and target.Character
+    and target.Character:FindFirstChildOfClass("Humanoid") then
+        spectating = true
+        Camera.CameraSubject =
+            target.Character:FindFirstChildOfClass("Humanoid")
+    end
+end
+
+-- TABS
+local function makeTab(name, callback)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(1, -12, 0, 37)
+    b.BackgroundColor3 = Color3.fromRGB(48, 35, 70)
+    b.Text = name
+    b.TextColor3 = WHITE
+    b.Font = Enum.Font.GothamSemibold
+    b.TextSize = 13
+    b.Parent = Side
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 7)
+    b.MouseButton1Click:Connect(callback)
+end
+
+-- HOME
+local function homeTab()
+    clearContent()
+    label("WELCOME TO DiiUi HUB")
+    label("Version 2.0 | Real Executor")
+    label("Executor GUI test: successful!")
+    label("M = Show / Hide GUI")
+    label("Pilih menu di sebelah kiri.")
+    button("Refresh Character", function()
+        getCharacter()
+        notify("Character refreshed")
+    end)
+end
+
+-- GRAPHICS TAB
+local function graphicsTab()
+    clearContent()
+    label("GRAPHICS SETTINGS")
+    button("HD Graphics", function() preset("HD") end)
+    button("Low Graphics", function() preset("Low") end)
+    button("Horror Mode", function() preset("Horror") end)
+    button("Sunset Mode", function() preset("Sunset") end)
+    button("Night Mode", function() preset("Night") end)
+    button("Fog Mode", function() preset("Fog") end)
+    button("Reset Graphics", function() preset("Reset") end)
+end
+
+-- TELEPORT TAB: AUTO PLAYER LIST
+local function teleportTab()
+    clearContent()
+
+    label("✦ TELEPORT TO PLAYER")
+    label("Pilih pemain dari daftar server:")
+
+    local function refreshPlayers()
+        clearContent()
+
+        label("✦ TELEPORT TO PLAYER")
+        label("PLAYER LIST - " .. #Players:GetPlayers() .. " PLAYERS")
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LP then
+                button("➤  " .. player.Name, function()
+                    local target = player.Character
+                    local targetRoot = target and
+                        target:FindFirstChild("HumanoidRootPart")
+
+                    local myRoot = getCharacter():FindFirstChild(
+                        "HumanoidRootPart"
+                    )
+
+                    if targetRoot and myRoot then
+                        myRoot.CFrame =
+                            targetRoot.CFrame * CFrame.new(0, 0, 3)
+                        notify("Teleport dicoba ke " .. player.Name)
+                    else
+                        notify("Character pemain belum tersedia")
+                    end
+                end)
+            end
+        end
+
+        button("⟳  Refresh Player List", refreshPlayers)
+    end
+
+    refreshPlayers()
+end
+
+-- SPECTATOR TAB
+local function spectatorTab()
+    clearContent()
+    label("SPECTATOR")
+    local nameBox = textbox("Masukkan username pemain")
+    button("Spectate Player", function()
+        spectatePlayer(nameBox.Text)
+    end)
+    button("Stop Spectating", stopSpectate)
+
+    label("PLAYER LIST")
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LP then
+            button(player.Name, function()
+                spectatePlayer(player.Name)
+            end)
+        end
+    end
+end
+
+-- CARRY TAB
+local function carryTab()
+    clearContent()
+    label("CARRY MENU")
+    local nameBox = textbox("Username pemain")
+    button("Carry Info", function()
+        notify("Carry memerlukan dukungan server game")
+    end)
+    button("Refresh Player List", function()
+        carryTab()
+    end)
+    label("Menu ini tidak mengirim RemoteEvent sembarangan.")
+    label("Fitur carry hanya dapat bekerja jika game menyediakan sistemnya.")
+end
+
+-- VISUAL TAB
+local function visualTab()
+    clearContent()
+    label("LOCAL VISUAL")
+    button("Invisible Visual ON", function()
+        setInvisible(true)
+        notify("Invisible visual aktif di client")
+    end)
+    button("Invisible Visual OFF", function()
+        setInvisible(false)
+        notify("Invisible visual dimatikan")
+    end)
+    label("Efek ini hanya mengubah tampilan lokal.")
+end
+
+
+--====================================
+-- LIMITED ITEM VISUAL (CLIENT-SIDE COSMETIC PREVIEW)
+-- Item hanya terlihat di client sendiri; tidak memberikan item/inventory.
+--====================================
+local LimitedPresets = {
+    {Name="8-Bit Royal Crown", AssetId=10159600649, MeshId="rbxassetid://10138606900", TextureId="rbxassetid://10138606949", Effect="Crown"},
+    {Name="Spec Beta Biograft Energy Sword", AssetId=14876573, MeshId="rbxassetid://11996935", TextureId="rbxassetid://14876424", Effect="Diamond", Gear=true},
+    {Name="St Patrick's Day Fairy", AssetId=226189871, MeshId="rbxassetid://226143404", TextureId="rbxassetid://226143506", Effect="Green"},
+    {Name="Winter Fairy", AssetId=141742418, MeshId="rbxassetid://128216670", TextureId="rbxassetid://141740743", Effect="Cyan"},
+    {Name="8-Bit HP Bar", AssetId=10159610478, Effect="Native"},
+    {Name="8-Bit Extra Life", AssetId=10159606132, Effect="Native"},
+    {Name="8-Bit Tabby Cat", AssetId=10159617728, Effect="Native"},
+    {Name="8-Bit Roblox Coin", AssetId=10159622004, Effect="Native"},
+    {Name="Fiery Horns of the Netherworld", AssetId=215718515, Effect="Orange"},
+    {Name="Frozen Horns of the Frigid Planes", AssetId=74891470, Effect="Blue"},
+    {Name="Poisoned Horns of the Toxic Wasteland", AssetId=1744060292, Effect="GreenFire"},
+    {Name="Sparkle Time Fedora", AssetId=1285307, Effect="Sparkles"},
+    {Name="Valkyrie Helm", AssetId=1365767, Effect="None"},
+    {Name="Dominus Empyreus", AssetId=21070012, Effect="None"},
+}
+
+local LimitedActive = {}
+local LimitedConfig = {}
+local selectedLimited = LimitedPresets[1].Name
+local function defaultLimitedConfig()
+    return {Scale=100, X=0, Y=0, Z=0, RX=0, RY=0, RZ=0, Effects=true}
+end
+local function getLimitedConfig(name)
+    if not LimitedConfig[name] then LimitedConfig[name] = defaultLimitedConfig() end
+    return LimitedConfig[name]
+end
+local function addLimitedEffect(handle, kind)
+    if kind == "None" or kind == "Native" then return end
+    if kind == "Crown" then
+        local a = Instance.new("Attachment")
+        a.Name = "DiiUi_LimitedAttachment"
+        a.Parent = handle
+        local pe = Instance.new("ParticleEmitter")
+        pe.Name = "DiiUi_LimitedParticles"
+        pe.Texture = "rbxassetid://241685484"
+        pe.Rate = 12
+        pe.Lifetime = NumberRange.new(1, 2)
+        pe.Speed = NumberRange.new(1, 2)
+        pe.Parent = a
+    elseif kind == "Diamond" or kind == "Green" or kind == "Cyan" or kind == "Sparkles" then
+        local sp = Instance.new("Sparkles")
+        sp.Name = "DiiUi_LimitedSparkles"
+        sp.SparkleColor = kind == "Diamond" and Color3.fromRGB(190,240,255)
+            or kind == "Green" and Color3.fromRGB(70,255,100)
+            or kind == "Cyan" and Color3.fromRGB(130,230,255)
+            or Color3.fromRGB(255,225,120)
+        sp.Parent = handle
+    else
+        local fire = Instance.new("Fire")
+        fire.Name = "DiiUi_LimitedFire"
+        fire.Color = kind == "Orange" and Color3.fromRGB(255,140,30)
+            or kind == "Blue" and Color3.fromRGB(60,170,255)
+            or Color3.fromRGB(70,255,70)
+        fire.SecondaryColor = fire.Color:Lerp(Color3.new(1,1,1), 0.35)
+        fire.Size = 3
+        fire.Heat = 5
+        fire.Parent = handle
+    end
+end
+local function applyLimitedTransform(name)
+    local entry = LimitedActive[name]
+    if not entry or not entry.Handle or not entry.Handle.Parent then return end
+    local c = entry.Config
+    local factor = math.clamp((tonumber(c.Scale) or 100) / 100, 0.1, 4)
+    if entry.Weld then
+        entry.Weld.C0 = entry.BaseC0
+            * CFrame.new((c.X or 0)/10, (c.Y or 0)/10, (c.Z or 0)/10)
+            * CFrame.Angles(math.rad(c.RX or 0), math.rad(c.RY or 0), math.rad(c.RZ or 0))
+    end
+    if entry.Mesh and entry.BaseMeshScale then
+        entry.Mesh.Scale = entry.BaseMeshScale * factor
+    elseif entry.BaseSize then
+        entry.Handle.Size = entry.BaseSize * factor
+    end
+    for _, d in ipairs(entry.Handle:GetDescendants()) do
+        if d:IsA("ParticleEmitter") or d:IsA("Fire") or d:IsA("Sparkles") or d:IsA("Smoke") then
+            d.Enabled = c.Effects
+        end
+    end
+end
+local function removeLimitedItem(name)
+    local entry = LimitedActive[name]
+    if entry then
+        pcall(function() entry.Model:Destroy() end)
+        LimitedActive[name] = nil
+    end
+end
+local function attachLimitedItem(item)
+    local char = LP.Character
+    local head = char and char:FindFirstChild("Head")
+    if not head then return false, "Karakter/Head belum tersedia" end
+    removeLimitedItem(item.Name)
+    local asset
+    local ok, result = pcall(function()
+        return game:GetObjects("rbxassetid://" .. tostring(item.AssetId))
+    end)
+    if ok and type(result) == "table" then asset = result[1] end
+    local model = Instance.new("Model")
+    model.Name = "DiiUi_Limited_" .. item.Name:gsub("[^%w]", "_")
+    local handle
+    if asset then
+        if asset:IsA("BasePart") then
+            handle = asset
+            handle.Parent = model
+        elseif asset:IsA("Model") or asset:IsA("Accessory") or asset:IsA("Hat") or asset:IsA("Tool") then
+            handle = asset:FindFirstChild("Handle", true) or asset:FindFirstChildWhichIsA("BasePart", true)
+            asset.Parent = model
+        end
+    end
+    if not handle then
+        handle = Instance.new("Part")
+        handle.Name = "Handle"
+        handle.Size = Vector3.new(1,1,1)
+        handle.Parent = model
+        if item.MeshId then
+            local mesh = Instance.new("SpecialMesh")
+            mesh.MeshType = Enum.MeshType.FileMesh
+            mesh.MeshId = item.MeshId
+            mesh.TextureId = item.TextureId or ""
+            mesh.Parent = handle
+        end
+    end
+    for _, d in ipairs(model:GetDescendants()) do
+        if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Sound") or d:IsA("TouchTransmitter") then
+            d:Destroy()
+        elseif d:IsA("BasePart") then
+            d.CanCollide = false
+            d.CanTouch = false
+            d.CanQuery = false
+            d.Massless = true
+            d.Anchored = false
+        end
+    end
+    local baseC0 = CFrame.new(0, 0.65, 0)
+    if item.Gear then baseC0 = CFrame.new(0.7, -0.7, -0.8) * CFrame.Angles(math.rad(-90), 0, 0) end
+    addLimitedEffect(handle, item.Effect)
+    local weld = Instance.new("Weld")
+    weld.Name = "DiiUi_LimitedWeld"
+    weld.Part0 = item.Gear and (char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm") or head) or head
+    weld.Part1 = handle
+    weld.C0 = baseC0
+    weld.Parent = handle
+    model.Parent = char
+    local mesh = handle:FindFirstChildOfClass("SpecialMesh")
+    LimitedActive[item.Name] = {
+        Model=model, Handle=handle, Weld=weld, BaseC0=baseC0,
+        BaseSize=handle.Size, Mesh=mesh, BaseMeshScale=mesh and mesh.Scale or nil,
+        Config=getLimitedConfig(item.Name), Item=item
+    }
+    applyLimitedTransform(item.Name)
+    return true
+end
+
+local function limitedItemTab()
+    clearContent()
+    label("LIMITED ITEM VISUAL")
+    label("Preview kosmetik lokal - hanya terlihat di client kamu.")
+    for _, item in ipairs(LimitedPresets) do
+        button("＋  " .. item.Name, function()
+            local ok, err = attachLimitedItem(item)
+            if ok then notify(item.Name .. " dipasang secara lokal") else notify(err) end
+        end)
+    end
+    button("LEPAS SEMUA LIMITED ITEM", function()
+        for name in pairs(LimitedActive) do removeLimitedItem(name) end
+        notify("Semua item visual dilepas")
+    end)
+    label("PENGATURAN ITEM AKTIF")
+    local names = {}
+    for name in pairs(LimitedActive) do table.insert(names, name) end
+    table.sort(names)
+    if #names == 0 then label("Pasang item terlebih dahulu untuk mengatur.") return end
+    for _, name in ipairs(names) do
+        button("Pilih: " .. name, function()
+            selectedLimited = name
+            limitedItemTab()
+        end)
+    end
+    label("Terpilih: " .. selectedLimited)
+    local cfg = getLimitedConfig(selectedLimited)
+    local fields = {
+        {"Scale (%)", "Scale", 20, 300}, {"Posisi X (per 0.1 stud)", "X", -50, 50},
+        {"Posisi Y (per 0.1 stud)", "Y", -50, 50}, {"Posisi Z (per 0.1 stud)", "Z", -50, 50},
+        {"Rotasi X", "RX", -180, 180}, {"Rotasi Y", "RY", -180, 180}, {"Rotasi Z", "RZ", -180, 180},
+    }
+    for _, field in ipairs(fields) do
+        label(field[1] .. " | sekarang: " .. tostring(cfg[field[2]]))
+        local box = textbox("Masukkan angka")
+        box.Text = tostring(cfg[field[2]])
+        button("Terapkan " .. field[1], function()
+            local value = tonumber(box.Text)
+            if not value then notify("Masukkan angka yang valid") return end
+            cfg[field[2]] = math.clamp(value, field[3], field[4])
+            applyLimitedTransform(selectedLimited)
+            notify(field[1] .. " diperbarui")
+        end)
+    end
+    button("Efek: ON / OFF", function()
+        cfg.Effects = not cfg.Effects
+        applyLimitedTransform(selectedLimited)
+        notify("Efek " .. (cfg.Effects and "ON" or "OFF"))
+    end)
+    button("Reset Transform", function()
+        LimitedConfig[selectedLimited] = defaultLimitedConfig()
+        if LimitedActive[selectedLimited] then
+            LimitedActive[selectedLimited].Config = LimitedConfig[selectedLimited]
+        end
+        applyLimitedTransform(selectedLimited)
+        limitedItemTab()
+    end)
+end
+
+--====================================
+-- FREE CAM (CLIENT CAMERA ONLY)
+--====================================
+local freeCam = {Enabled=false, Speed=35, Sensitivity=0.22, FOV=70, Pitch=0, Yaw=0, CFrame=nil, SavedType=nil, SavedSubject=nil, SavedFOV=70, Rotating=false}
+local freeCamConnection
+local function startFreeCam()
+    local cam = workspace.CurrentCamera
+    if not cam then return end
+    freeCam.SavedType = cam.CameraType
+    freeCam.SavedSubject = cam.CameraSubject
+    freeCam.SavedFOV = cam.FieldOfView
+    freeCam.CFrame = cam.CFrame
+    local pitch, yaw = cam.CFrame:ToOrientation()
+    freeCam.Pitch, freeCam.Yaw = pitch, yaw
+    cam.CameraType = Enum.CameraType.Scriptable
+    cam.FieldOfView = freeCam.FOV
+    freeCam.Enabled = true
+    if freeCamConnection then freeCamConnection:Disconnect() end
+    freeCamConnection = RunService.RenderStepped:Connect(function(dt)
+        if not freeCam.Enabled then return end
+        cam = workspace.CurrentCamera
+        if not cam then return end
+        local move = Vector3.zero
+        if not UIS:GetFocusedTextBox() then
+            if UIS:IsKeyDown(Enum.KeyCode.W) then move += Vector3.new(0,0,-1) end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then move += Vector3.new(0,0,1) end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then move += Vector3.new(-1,0,0) end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then move += Vector3.new(1,0,0) end
+            if UIS:IsKeyDown(Enum.KeyCode.E) then move += Vector3.new(0,1,0) end
+            if UIS:IsKeyDown(Enum.KeyCode.Q) then move += Vector3.new(0,-1,0) end
+        end
+        local rotation = CFrame.fromOrientation(freeCam.Pitch, freeCam.Yaw, 0)
+        local speed = freeCam.Speed * (UIS:IsKeyDown(Enum.KeyCode.LeftShift) and 0.35 or 1)
+        local delta = rotation:VectorToWorldSpace(move)
+        if delta.Magnitude > 0 then delta = delta.Unit end
+        freeCam.CFrame = CFrame.new(freeCam.CFrame.Position + delta * speed * dt) * rotation
+        cam.CameraType = Enum.CameraType.Scriptable
+        cam.CFrame = freeCam.CFrame
+        cam.FieldOfView = freeCam.FOV
+    end)
+end
+local function stopFreeCam()
+    freeCam.Enabled = false
+    freeCam.Rotating = false
+    UIS.MouseBehavior = Enum.MouseBehavior.Default
+    if freeCamConnection then freeCamConnection:Disconnect(); freeCamConnection=nil end
+    local cam = workspace.CurrentCamera
+    if cam then
+        cam.CameraType = freeCam.SavedType or Enum.CameraType.Custom
+        cam.CameraSubject = freeCam.SavedSubject
+        cam.FieldOfView = freeCam.SavedFOV or 70
+    end
+end
+UIS.InputBegan:Connect(function(input, processed)
+    if freeCam.Enabled and input.UserInputType == Enum.UserInputType.MouseButton2 and not processed then
+        freeCam.Rotating = true
+        UIS.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
+    end
+end)
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        freeCam.Rotating = false
+        UIS.MouseBehavior = Enum.MouseBehavior.Default
+    end
+end)
+UIS.InputChanged:Connect(function(input)
+    if not freeCam.Enabled then return end
+    if input.UserInputType == Enum.UserInputType.MouseMovement and freeCam.Rotating then
+        freeCam.Yaw = freeCam.Yaw - math.rad(input.Delta.X * freeCam.Sensitivity)
+        freeCam.Pitch = math.clamp(freeCam.Pitch - math.rad(input.Delta.Y * freeCam.Sensitivity), -math.rad(89), math.rad(89))
+    elseif input.UserInputType == Enum.UserInputType.MouseWheel then
+        freeCam.FOV = math.clamp(freeCam.FOV - input.Position.Z * 4, 10, 120)
+    end
+end)
+local function freeCamTab()
+    clearContent()
+    label("FREE CAM")
+    label("WASD bergerak | Q/E turun-naik | tahan klik kanan untuk melihat")
+    button(freeCam.Enabled and "Matikan Free Cam" or "Aktifkan Free Cam", function()
+        if freeCam.Enabled then stopFreeCam() else startFreeCam() end
+        freeCamTab()
+    end)
+    label("Kecepatan: " .. tostring(freeCam.Speed))
+    local speedBox = textbox("Kecepatan kamera (1-150)")
+    speedBox.Text = tostring(freeCam.Speed)
+    button("Terapkan Kecepatan", function()
+        local v = tonumber(speedBox.Text)
+        if v then freeCam.Speed = math.clamp(v, 1, 150); freeCamTab() else notify("Angka tidak valid") end
+    end)
+    label("FOV: " .. tostring(freeCam.FOV))
+    local fovBox = textbox("FOV (10-120)")
+    fovBox.Text = tostring(freeCam.FOV)
+    button("Terapkan FOV", function()
+        local v = tonumber(fovBox.Text)
+        if v then freeCam.FOV = math.clamp(v, 10, 120); if freeCam.Enabled and workspace.CurrentCamera then workspace.CurrentCamera.FieldOfView=freeCam.FOV end; freeCamTab() else notify("Angka tidak valid") end
+    end)
+    button("Reset Kamera", function()
+        freeCam.Speed=35; freeCam.FOV=70
+        if freeCam.Enabled then stopFreeCam() end
+        freeCamTab()
+    end)
+end
+
+--====================================
+-- NANA COIN HUTAN (READ-ONLY COIN PANEL)
+-- Menampilkan saldo Coins yang direplikasi oleh game.
+-- Tidak memanggil GiveCoinsEvent atau mengubah saldo server.
+--====================================
+local function nanaCoinTab()
+    clearContent()
+    label("NANA COIN HUTAN")
+    label("Coin Balance - tampilan lokal/read-only")
+
+    local balanceLabel = label("Coins: memuat...")
+    local function refreshCoinBalance()
+        local stats = LP:FindFirstChild("leaderstats")
+        local coins = stats and (
+            stats:FindFirstChild("Coins")
+            or stats:FindFirstChild("Coin")
+            or stats:FindFirstChild("Cash")
+        )
+
+        if coins and (coins:IsA("IntValue") or coins:IsA("NumberValue")) then
+            balanceLabel.Text = "Coins: " .. tostring(coins.Value)
+        else
+            balanceLabel.Text = "Coins: tidak ditemukan"
+        end
+    end
+
+    button("Refresh Coin Balance", refreshCoinBalance)
+    label("Panel ini hanya membaca saldo yang tersedia di client.")
+    label("Penambahan koin harus dilakukan oleh sistem resmi server game.")
+
+    refreshCoinBalance()
+end
+
+-- CREATE TABS
+makeTab("⌂  Home", homeTab)
+makeTab("☀  Graphics", graphicsTab)
+makeTab("➤  Teleport", teleportTab)
+makeTab("◉  Spectator", spectatorTab)
+makeTab("♡  Carry", carryTab)
+makeTab("✧  Visual", visualTab)
+makeTab("✦  Limited Items", limitedItemTab)
+makeTab("◎  Free Cam", freeCamTab)
+makeTab("🌿  Nana Coin Hutan", nanaCoinTab)
+
+homeTab()
+
+print("DiiUi HUB V2 loaded successfully!")
