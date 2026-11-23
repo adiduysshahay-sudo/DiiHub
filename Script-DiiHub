@@ -25,9 +25,9 @@ local LP = Players.LocalPlayer
 --====================================
 local AllowedUsernames = {
     "Bapex1708",
-    -- "Bapex1708",
-    -- "adefabian7",
-    -- "Hantu_belau2",
+    "Bapex1708",
+    "adefabian7",
+    "Hantu_belau2",
 }
 
 local AllowedUserIds = {
