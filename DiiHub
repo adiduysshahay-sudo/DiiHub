@@ -33,8 +33,8 @@ local AllowedUsernames = {
     "Celvin_tin",
     "Hantu_belau2",
     "adefabian7",
-    "AYELxzy978",
     "haushh42",
+    "AYELxzy978",
 
 }
 
@@ -882,7 +882,124 @@ local function addFx(className, name, props)
     return fx
 end
 
+
+-- ===== CUACA / PARTIKEL (hanya terlihat di layar sendiri) =====
+local weather = {}
+local cloudSaved
+
+local function ns(...)
+    local pts = {}
+    for i, p in ipairs({...}) do pts[i] = NumberSequenceKeypoint.new(p[1], p[2]) end
+    return NumberSequence.new(pts)
+end
+
+local function stopWeather()
+    if weather.Conn then weather.Conn:Disconnect() end
+    if weather.Part then pcall(function() weather.Part:Destroy() end) end
+    if weather.Bars then pcall(function() weather.Bars:Destroy() end) end
+    weather = {}
+    local terrain = workspace:FindFirstChildOfClass("Terrain")
+    local clouds = terrain and terrain:FindFirstChildOfClass("Clouds")
+    if clouds then
+        if clouds.Name == "DiiUi_Clouds" then
+            clouds:Destroy()
+        elseif cloudSaved then
+            for k, v in pairs(cloudSaved) do pcall(function() clouds[k] = v end) end
+        end
+    end
+    cloudSaved = nil
+end
+
+local function setClouds(cover, density, color)
+    local terrain = workspace:FindFirstChildOfClass("Terrain")
+    if not terrain then return end
+    local c = terrain:FindFirstChildOfClass("Clouds")
+    if not c then
+        c = Instance.new("Clouds")
+        c.Name = "DiiUi_Clouds"
+        c.Parent = terrain
+    elseif c.Name ~= "DiiUi_Clouds" and not cloudSaved then
+        cloudSaved = {Cover = c.Cover, Density = c.Density, Color = c.Color, Enabled = c.Enabled}
+    end
+    c.Enabled = true
+    c.Cover, c.Density, c.Color = cover, density, color
+end
+
+-- Part transparan mengikuti kamera + ParticleEmitter (hujan / salju / debu)
+local function startWeather(opts)
+    local cam = workspace.CurrentCamera
+    if not cam then return end
+    local height = opts.Height or 22
+    local part = Instance.new("Part")
+    part.Name = "DiiUi_Weather"
+    part.Anchored = true
+    part.CanCollide = false
+    part.CanQuery = false
+    part.CanTouch = false
+    part.CastShadow = false
+    part.Transparency = 1
+    part.Size = opts.Size or Vector3.new(80, 1, 80)
+    part.CFrame = CFrame.new(cam.CFrame.Position + Vector3.new(0, height, 0))
+    part.Parent = cam
+    -- batas rate per emitter: 400 di PC, 100 di HP
+    local maxRate = UIS.TouchEnabled and 100 or 400
+    for _ = 1, opts.Count or 1 do
+        local e = Instance.new("ParticleEmitter")
+        for k, v in pairs(opts.Props) do pcall(function() e[k] = v end) end
+        pcall(function() e.Rate = math.min(opts.Props.Rate or 100, maxRate) end)
+        e.EmissionDirection = Enum.NormalId.Bottom
+        e.Parent = part
+    end
+    weather.Part = part
+    weather.Conn = RunService.RenderStepped:Connect(function()
+        local c = workspace.CurrentCamera
+        if not c or not part.Parent then return end
+        if part.Parent ~= c then part.Parent = c end
+        part.CFrame = CFrame.new(c.CFrame.Position + Vector3.new(0, height, 0))
+    end)
+end
+
+-- Garis hitam atas-bawah ala film (di bawah UI game)
+local function startLetterbox(frac)
+    local sg = Instance.new("ScreenGui")
+    sg.Name = "DiiUi_Letterbox"
+    sg.IgnoreGuiInset = true
+    sg.ResetOnSpawn = false
+    sg.DisplayOrder = -1
+    sg.Parent = LP:WaitForChild("PlayerGui")
+    for i = 0, 1 do
+        local f = Instance.new("Frame")
+        f.BackgroundColor3 = Color3.new(0, 0, 0)
+        f.BorderSizePixel = 0
+        f.Size = UDim2.new(1, 0, frac, 0)
+        f.Position = UDim2.new(0, 0, i == 0 and 0 or 1 - frac, 0)
+        f.Parent = sg
+    end
+    weather.Bars = sg
+end
+
+local SMOKE_TEX = "rbxasset://textures/particles/smoke_main.dds"
+
+-- Properti emitter hujan: partikel dipanjangkan (Squash) jadi garis air
+local function rainProps(rate, smin, smax, size, tr)
+    return {
+        Rate = rate,
+        Lifetime = NumberRange.new(0.45, 0.6),
+        Speed = NumberRange.new(smin, smax),
+        Acceleration = Vector3.new(0, -40, 0),
+        SpreadAngle = Vector2.new(3, 3),
+        Size = NumberSequence.new(size),
+        Squash = NumberSequence.new(3),
+        Rotation = NumberRange.new(-6, 6),
+        Color = ColorSequence.new(Color3.fromRGB(190, 205, 225)),
+        Transparency = ns({0, 1}, {0.1, tr}, {0.85, tr}, {1, 1}),
+        LightInfluence = 0.6,
+        LightEmission = 0.1,
+    }
+end
+
 local function resetLighting()
+    stopWeather()
     clearDiiEffects()
     setLight(oldLighting)
     if atmoSaved and atmoSaved.inst and atmoSaved.inst.Parent then
@@ -976,6 +1093,136 @@ GraphicsPresets.Vintage = function()
     addFx("ColorCorrectionEffect", "Vintage", {TintColor = Color3.fromRGB(255, 224, 180),
         Saturation = -0.45, Contrast = 0.15})
     addFx("BlurEffect", "VintageBlur", {Size = 2})
+end
+
+
+-- ===== GRAFIK SUPER + CUACA =====
+GraphicsPresets.SuperHD = function()
+    setLight({Brightness = 3.2, GlobalShadows = true, ShadowSoftness = 0.1, ExposureCompensation = 0,
+        EnvironmentDiffuseScale = 1, EnvironmentSpecularScale = 1, FogEnd = 100000})
+    local a = getAtmo()
+    a.Density, a.Offset, a.Glare, a.Haze = 0.15, 0.1, 0.1, 0.5
+    a.Color = Color3.fromRGB(190, 210, 235)
+    a.Decay = Color3.fromRGB(120, 150, 190)
+    addFx("ColorCorrectionEffect", "SuperHD", {Contrast = 0.25, Saturation = 0.3, Brightness = 0.02,
+        TintColor = Color3.fromRGB(255, 250, 245)})
+    addFx("BloomEffect", "SuperHDBloom", {Intensity = 0.3, Size = 24, Threshold = 1.2})
+    addFx("SunRaysEffect", "SuperHDRays", {Intensity = 0.12, Spread = 0.7})
+    setQuality(21)
+end
+
+GraphicsPresets.SuperCinematic = function()
+    setLight({ClockTime = 17.4, Brightness = 2.1, GlobalShadows = true, ExposureCompensation = -0.2,
+        ShadowSoftness = 0.25, FogEnd = 100000})
+    local a = getAtmo()
+    a.Density, a.Offset, a.Glare, a.Haze = 0.3, 0.2, 0.4, 1.8
+    a.Color = Color3.fromRGB(255, 205, 160)
+    a.Decay = Color3.fromRGB(230, 130, 80)
+    addFx("ColorCorrectionEffect", "SuperCine", {TintColor = Color3.fromRGB(255, 226, 196),
+        Contrast = 0.3, Saturation = 0.05, Brightness = -0.03})
+    addFx("BloomEffect", "SuperCineBloom", {Intensity = 0.7, Size = 40, Threshold = 0.9})
+    addFx("DepthOfFieldEffect", "SuperCineDOF", {FarIntensity = 0.25, FocusDistance = 35,
+        InFocusRadius = 40, NearIntensity = 0})
+    addFx("SunRaysEffect", "SuperCineRays", {Intensity = 0.25, Spread = 1})
+    setQuality(21)
+    startLetterbox(0.11)
+end
+
+-- Salju: salju turun + langit putih kebiruan
+GraphicsPresets.Salju = function()
+    setLight({ClockTime = 13, Brightness = 2.2, GlobalShadows = true, ExposureCompensation = 0.15,
+        FogStart = 30, FogEnd = 650, FogColor = Color3.fromRGB(215, 225, 238),
+        Ambient = Color3.fromRGB(110, 125, 150), OutdoorAmbient = Color3.fromRGB(150, 165, 190)})
+    local a = getAtmo()
+    a.Density, a.Offset, a.Glare, a.Haze = 0.4, 0.15, 0, 1.8
+    a.Color = Color3.fromRGB(225, 233, 245)
+    a.Decay = Color3.fromRGB(180, 195, 215)
+    addFx("ColorCorrectionEffect", "Salju", {TintColor = Color3.fromRGB(225, 236, 255),
+        Saturation = -0.25, Contrast = 0.08, Brightness = 0.05})
+    addFx("BloomEffect", "SaljuBloom", {Intensity = 0.35, Size = 28, Threshold = 1.1})
+    setClouds(0.85, 0.7, Color3.fromRGB(235, 240, 248))
+    startWeather({Size = Vector3.new(90, 1, 90), Height = 24, Count = 3, Props = {
+        Texture = SMOKE_TEX, Rate = 140,
+        Color = ColorSequence.new(Color3.new(1, 1, 1)),
+        Size = NumberSequence.new(0.28),
+        Transparency = ns({0, 1}, {0.08, 0.15}, {0.9, 0.15}, {1, 1}),
+        Lifetime = NumberRange.new(7, 10), Speed = NumberRange.new(2, 4),
+        SpreadAngle = Vector2.new(25, 25), Acceleration = Vector3.new(1.2, -1.2, 0.4),
+        Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-40, 40),
+        LightInfluence = 0.2, LightEmission = 0.3,
+    }})
+end
+
+-- Kemarau: terik, kering, berdebu, langit hampir tanpa awan
+GraphicsPresets.Kemarau = function()
+    setLight({ClockTime = 12.5, Brightness = 3.4, GlobalShadows = true, ExposureCompensation = 0.1,
+        FogStart = 200, FogEnd = 2500, FogColor = Color3.fromRGB(240, 215, 170),
+        Ambient = Color3.fromRGB(120, 100, 75), OutdoorAmbient = Color3.fromRGB(150, 130, 100)})
+    local a = getAtmo()
+    a.Density, a.Offset, a.Glare, a.Haze = 0.28, 0.2, 0.6, 2.2
+    a.Color = Color3.fromRGB(240, 215, 170)
+    a.Decay = Color3.fromRGB(210, 150, 90)
+    addFx("ColorCorrectionEffect", "Kemarau", {TintColor = Color3.fromRGB(255, 226, 170),
+        Contrast = 0.2, Saturation = -0.05, Brightness = 0.03})
+    addFx("BloomEffect", "KemarauBloom", {Intensity = 0.5, Size = 30, Threshold = 0.95})
+    addFx("SunRaysEffect", "KemarauRays", {Intensity = 0.25, Spread = 1})
+    setClouds(0.08, 0.2, Color3.fromRGB(255, 245, 225))
+    -- debu tipis melayang di sekitar kamera
+    startWeather({Size = Vector3.new(70, 8, 70), Height = 3, Count = 1, Props = {
+        Texture = SMOKE_TEX, Rate = 30,
+        Color = ColorSequence.new(Color3.fromRGB(205, 175, 125)),
+        Size = ns({0, 0.2}, {0.5, 0.9}, {1, 0.2}),
+        Transparency = ns({0, 1}, {0.2, 0.82}, {0.8, 0.82}, {1, 1}),
+        Lifetime = NumberRange.new(5, 8), Speed = NumberRange.new(1, 3),
+        SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(1.5, 0.3, 0.5),
+        Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-15, 15),
+        LightInfluence = 0.6,
+    }})
+end
+
+-- Hujan gerimis: ringan, langit abu terang
+GraphicsPresets.Gerimis = function()
+    setLight({ClockTime = 16, Brightness = 1.7, ExposureCompensation = -0.1,
+        FogStart = 40, FogEnd = 900, FogColor = Color3.fromRGB(175, 185, 196),
+        Ambient = Color3.fromRGB(95, 105, 120), OutdoorAmbient = Color3.fromRGB(125, 135, 150)})
+    local a = getAtmo()
+    a.Density, a.Offset, a.Glare, a.Haze = 0.35, 0.1, 0, 1.6
+    a.Color = Color3.fromRGB(180, 190, 202)
+    a.Decay = Color3.fromRGB(140, 150, 165)
+    addFx("ColorCorrectionEffect", "Gerimis", {TintColor = Color3.fromRGB(210, 222, 235),
+        Saturation = -0.18, Contrast = 0.05})
+    setClouds(0.7, 0.55, Color3.fromRGB(200, 206, 214))
+    startWeather({Size = Vector3.new(70, 1, 70), Height = 22, Count = 2, Props = rainProps(55, 45, 60, 0.35, 0.55)})
+end
+
+-- Hujan deras: gelap, lebat, kabut tipis
+GraphicsPresets.HujanDeras = function()
+    setLight({ClockTime = 15, Brightness = 1.0, ExposureCompensation = -0.3,
+        FogStart = 40, FogEnd = 350, FogColor = Color3.fromRGB(110, 120, 135),
+        Ambient = Color3.fromRGB(80, 90, 105), OutdoorAmbient = Color3.fromRGB(100, 110, 125)})
+    local a = getAtmo()
+    a.Density, a.Offset, a.Glare, a.Haze = 0.45, 0.1, 0, 2.4
+    a.Color = Color3.fromRGB(150, 160, 175)
+    a.Decay = Color3.fromRGB(100, 110, 125)
+    addFx("ColorCorrectionEffect", "HujanDeras", {TintColor = Color3.fromRGB(190, 203, 220),
+        Saturation = -0.3, Contrast = 0.12})
+    setClouds(0.95, 0.9, Color3.fromRGB(120, 128, 140))
+    startWeather({Size = Vector3.new(80, 1, 80), Height = 22, Count = 4, Props = rainProps(400, 70, 90, 0.45, 0.45)})
+end
+
+-- Hujan deras + kabut tebal: jarak pandang pendek
+GraphicsPresets.HujanKabut = function()
+    setLight({ClockTime = 15, Brightness = 0.85, ExposureCompensation = -0.35,
+        FogStart = 0, FogEnd = 140, FogColor = Color3.fromRGB(135, 145, 158),
+        Ambient = Color3.fromRGB(85, 95, 110), OutdoorAmbient = Color3.fromRGB(105, 115, 130)})
+    local a = getAtmo()
+    a.Density, a.Offset, a.Glare, a.Haze = 0.7, 0.3, 0, 3.5
+    a.Color = Color3.fromRGB(160, 170, 182)
+    a.Decay = Color3.fromRGB(110, 120, 135)
+    addFx("ColorCorrectionEffect", "HujanKabut", {TintColor = Color3.fromRGB(175, 190, 205),
+        Saturation = -0.35, Contrast = 0.08})
+    setClouds(0.95, 0.9, Color3.fromRGB(125, 133, 145))
+    startWeather({Size = Vector3.new(80, 1, 80), Height = 22, Count = 4, Props = rainProps(400, 70, 90, 0.45, 0.5)})
 end
 
 function preset(name)
@@ -1183,6 +1430,16 @@ end
 local function graphicsTab()
     clearContent()
     label("GRAPHICS SETTINGS")
+    label("🌟 GRAFIK SUPER")
+    button("💎  Super HD", function() preset("SuperHD") notify("Super HD aktif") end)
+    button("🎞  Super Cinematic", function() preset("SuperCinematic") notify("Super Cinematic aktif") end)
+    label("🌦 CUACA")
+    button("❄  Salju", function() preset("Salju") notify("Salju aktif") end)
+    button("☀  Kemarau", function() preset("Kemarau") notify("Kemarau aktif") end)
+    button("🌦  Hujan Gerimis", function() preset("Gerimis") notify("Hujan gerimis aktif") end)
+    button("🌧  Hujan Deras", function() preset("HujanDeras") notify("Hujan deras aktif") end)
+    button("⛈  Hujan Deras + Kabut", function() preset("HujanKabut") notify("Hujan deras berkabut aktif") end)
+    label("🎨 GRAFIK LAINNYA")
     button("🎬  Cinematic", function() preset("Cinematic") notify("Cinematic aktif") end)
     button("🌫  Kabut", function() preset("Kabut") notify("Kabut aktif") end)
     button("💎  Ultra HD", function() preset("UltraHD") notify("Ultra HD aktif") end)
@@ -2673,7 +2930,7 @@ end
 -- Tap username -> langsung menempel. Gaya bisa diganti kapan saja saat menempel.
 -- Lepas: lompat, tombol ❌ di layar, atau tombol di menu.
 --====================================
-local Tempel = {Target = nil, StyleIdx = 1, T = 0, Saved = nil}
+local Tempel = {Target = nil, StyleIdx = 1, T = 0, Saved = nil, AnimOn = true, Tracks = {}, AnimKey = nil}
 local TempelStyles = {
     {Name = "🎒 Backpack (di punggung)", Fn = function(t) return CFrame.new(0, 0.2, 1.3) end},
     {Name = "🐴 Gendong naik punggung", Fn = function(t) return CFrame.new(0, 1.0, 0.9) * CFrame.Angles(math.rad(-12), 0, 0) end},
@@ -2692,6 +2949,77 @@ local TempelStyles = {
 }
 local TempelNames = {}
 for i, st in ipairs(TempelStyles) do TempelNames[i] = st.Name end
+
+
+-- ANIMASI GERAK saat menempel (animasi bawaan Roblox, ikut terlihat pemain lain)
+Tempel.Ids = {
+    R15 = {idle = 507766388, walk = 507777826, run = 507767714, jump = 507765000,
+        fall = 507767968, climb = 507765644, sit = 2506281703, swim = 507784897,
+        cheer = 507770677, laugh = 507770818, dance1 = 507771019, dance2 = 507776043},
+    R6 = {idle = 180435571, walk = 180426354, run = 180426354, jump = 125750702,
+        fall = 180436148, climb = 180436334, sit = 178130996, swim = 180436148,
+        cheer = 129423030, laugh = 129423131, dance1 = 182435998, dance2 = 182436842},
+}
+-- per gaya: {animasi diam, animasi saat target bergerak, kecepatan diam, kecepatan gerak}
+Tempel.AnimMap = {
+    [1] = {"climb", "climb", 0.25, 1},    -- backpack: berpegangan di punggung
+    [2] = {"climb", "climb", 0.25, 1},    -- gendong
+    [3] = {"fall", "fall", 0.6, 1.2},     -- superman
+    [4] = {"laugh", "laugh", 0.7, 1},     -- tiduran santai
+    [5] = {"fall", "fall", 0.8, 1.4},     -- gantung terbalik
+    [6] = {"sit", "sit", 1, 1},           -- duduk di kepala
+    [7] = {"sit", "sit", 1, 1},           -- nangkring di bahu
+    [8] = {"cheer", "cheer", 0.8, 1},     -- peluk
+    [9] = {"swim", "swim", 0.8, 1.2},     -- melayang
+    [10] = {"run", "run", 1, 1},          -- mengorbit
+    [11] = {"dance1", "dance1", 1, 1},    -- muter-muter
+    [12] = {"idle", "walk", 1, 1},        -- jalan bareng
+    [13] = {"dance2", "dance2", 1, 1.2},  -- goyang-goyang
+    [14] = {"jump", "jump", 1, 1.3},      -- loncat-loncat
+}
+
+Tempel.StopAnim = function()
+    for _, tr in pairs(Tempel.Tracks) do
+        pcall(function() tr:Stop(0.15) end)
+    end
+    Tempel.Tracks = {}
+    Tempel.AnimKey = nil
+end
+
+Tempel.UpdateAnim = function(hum, tr)
+    if not Tempel.AnimOn then return end
+    local ids = Tempel.Ids[hum.RigType == Enum.HumanoidRigType.R6 and "R6" or "R15"]
+    local map = Tempel.AnimMap[Tempel.StyleIdx] or Tempel.AnimMap[1]
+    local v = tr.AssemblyLinearVelocity
+    local speed = Vector3.new(v.X, 0, v.Z).Magnitude
+    local moving = speed > 1.5
+    local name = moving and map[2] or map[1]
+    -- jalan bareng: jalan pelan / lari sesuai kecepatan target
+    if Tempel.StyleIdx == 12 and moving then name = speed > 18 and "run" or "walk" end
+    local rate = (moving and map[4] or map[3])
+    if Tempel.StyleIdx == 12 and moving then rate = math.clamp(speed / 16, 0.5, 1.8) end
+
+    local track = Tempel.Tracks[name]
+    if not track then
+        local animator = hum:FindFirstChildOfClass("Animator")
+        if not animator then animator = Instance.new("Animator") animator.Parent = hum end
+        local a = Instance.new("Animation")
+        a.AnimationId = "rbxassetid://" .. tostring(ids[name] or ids.idle)
+        local ok, t = pcall(function() return animator:LoadAnimation(a) end)
+        if not ok or not t then return end
+        t.Priority = Enum.AnimationPriority.Action4
+        t.Looped = true
+        Tempel.Tracks[name] = t
+        track = t
+    end
+    if Tempel.AnimKey ~= name then
+        local old = Tempel.AnimKey and Tempel.Tracks[Tempel.AnimKey]
+        if old then old:Stop(0.2) end
+        track:Play(0.2)
+        Tempel.AnimKey = name
+    end
+    if track.IsPlaying then track:AdjustSpeed(rate) end
+end
 
 local tempelConn
 local stopTempel
@@ -2729,6 +3057,7 @@ function stopTempel(msg)
         root.AssemblyLinearVelocity = Vector3.zero
         root.AssemblyAngularVelocity = Vector3.zero
     end
+    Tempel.StopAnim()
     if msg and was then toast(msg) end
     if updateTempelUI then updateTempelUI() end
 end
@@ -2805,6 +3134,7 @@ local function startTempel(player)
             r.CFrame = Tempel.Cur
             r.AssemblyLinearVelocity = Vector3.zero
             r.AssemblyAngularVelocity = Vector3.zero
+            Tempel.UpdateAnim(h, tr)
         end
     end
     -- RenderStepped = posisi target paling baru (anti delay); Heartbeat = jaga sinkron fisika
@@ -2840,6 +3170,10 @@ local function tempelTab()
     clearContent()
     tempelUI = {cards = {}, subs = {}}
     label("🎒 TEMPEL / BACKPACK V3")
+    toggleButton("🎞  Animasi gerak (tidak kaku)", function() return Tempel.AnimOn end, function()
+        Tempel.AnimOn = not Tempel.AnimOn
+        if not Tempel.AnimOn then Tempel.StopAnim() end
+    end)
 
     -- kartu status
     local f = Instance.new("Frame")
@@ -4425,11 +4759,13 @@ end
 -- EMOTE & ANIMASI KATALOG (cari langsung dari katalog Roblox)
 -- Dibungkus fungsi sendiri supaya tidak menambah local di level atas.
 --====================================
-Inv.emoteTab = (function()
+Inv.emoteTab, Inv.animTab = (function()
     local AvatarEditorService = game:GetService("AvatarEditorService")
 
-    local CATS = {
+    local EMOTE_CATS = {
         {"Emote", Enum.AvatarAssetType.EmoteAnimation},
+    }
+    local ANIM_CATS = {
         {"Idle", Enum.AvatarAssetType.IdleAnimation},
         {"Walk", Enum.AvatarAssetType.WalkAnimation},
         {"Run", Enum.AvatarAssetType.RunAnimation},
@@ -4438,6 +4774,7 @@ Inv.emoteTab = (function()
         {"Climb", Enum.AvatarAssetType.ClimbAnimation},
         {"Swim", Enum.AvatarAssetType.SwimAnimation},
     }
+    local CATS = EMOTE_CATS
     local SORTS = {
         {"Terbaru", Enum.CatalogSortType.RecentlyCreated},
         {"Relevan", Enum.CatalogSortType.Relevance},
@@ -4453,6 +4790,7 @@ Inv.emoteTab = (function()
         Fall = {"fall", {"FallAnim"}},
         Climb = {"climb", {"ClimbAnim"}},
         Swim = {"swim", {"Swim"}},
+        SwimIdle = {"swimidle", {"SwimIdle"}},
     }
     local MAX_RESULTS = 200 -- batas aman biar menu tidak berat di HP
 
@@ -4467,7 +4805,7 @@ Inv.emoteTab = (function()
     local statusLabel
 
     local function isActive()
-        return ActiveTab == Inv.emoteTab and statusLabel and statusLabel.Parent ~= nil
+        return (ActiveTab == Inv.emoteTab or ActiveTab == Inv.animTab) and statusLabel and statusLabel.Parent ~= nil
     end
 
     local function setStatus(t)
@@ -4480,6 +4818,7 @@ Inv.emoteTab = (function()
     end
 
     local function getAnimationIds(assetId)
+        if type(assetId) == "table" then return assetId end
         if cache[assetId] then return cache[assetId] end
         local ok, objs = pcall(function()
             return game:GetObjects("rbxassetid://" .. tostring(assetId))
@@ -4538,7 +4877,7 @@ Inv.emoteTab = (function()
         animate.Disabled = false
     end
 
-    local function applyAnimation(category, assetId)
+    local function applyAnimation(category, assetId, noRestart)
         local map = ANIMATE_MAP[category]
         local hum, char = getHum()
         if not map or not hum then return false end
@@ -4558,7 +4897,7 @@ Inv.emoteTab = (function()
                 a.AnimationId = ids[i] or ids[1]
             end
         end
-        restartAnimate(hum, animate)
+        if not noRestart then restartAnimate(hum, animate) end
         chosen[category] = assetId
         return true
     end
@@ -4581,6 +4920,45 @@ Inv.emoteTab = (function()
             restartAnimate(hum, animate)
         end
         originals = {}
+    end
+
+    -- PAKET ANIMASI (ID dari dokumentasi resmi Roblox, khusus R15)
+    local PACKS = {
+        {Name = "🚀  Astronaut", Ids = {Idle = {891621366, 891633237}, Walk = {891636393}, Run = {891636393}, Jump = {891627522}, Fall = {891617961}, Climb = {891609353}, Swim = {891639666}, SwimIdle = {891663592}}},
+        {Name = "🎈  Bubbly", Ids = {Idle = {910004836, 910009958}, Walk = {910034870}, Run = {910025107}, Jump = {910016857}, Fall = {910001910}, Climb = {909997997}, Swim = {910028158}, SwimIdle = {910030921}}},
+        {Name = "🤡  Cartoony", Ids = {Idle = {742637544, 742638445}, Walk = {742640026}, Run = {742638842}, Jump = {742637942}, Fall = {742637151}, Climb = {742636889}, Swim = {742639220}, SwimIdle = {742639812}}},
+        {Name = "👴  Elder", Ids = {Idle = {845397899, 845400520}, Walk = {845403856}, Run = {845386501}, Jump = {845398858}, Fall = {845396048}, Climb = {845392038}, Swim = {845401742}, SwimIdle = {845403127}}},
+        {Name = "🏰  Knight", Ids = {Idle = {657595757, 657568135}, Walk = {657552124}, Run = {657564596}, Jump = {658409194}, Fall = {657600338}, Climb = {658360781}, Swim = {657560551}, SwimIdle = {657557095}}},
+        {Name = "🧘  Levitation", Ids = {Idle = {616006778, 616008087}, Walk = {616013216}, Run = {616010382}, Jump = {616008936}, Fall = {616005863}, Climb = {616003713}, Swim = {616011509}, SwimIdle = {616012453}}},
+        {Name = "🧙  Mage", Ids = {Idle = {707742142, 707855907}, Walk = {707897309}, Run = {707861613}, Jump = {707853694}, Fall = {707829716}, Climb = {707826056}, Swim = {707876443}, SwimIdle = {707894699}}},
+        {Name = "🥷  Ninja", Ids = {Idle = {656117400, 656118341}, Walk = {656121766}, Run = {656118852}, Jump = {656117878}, Fall = {656115606}, Climb = {656114359}, Swim = {656119721}, SwimIdle = {656121397}}},
+        {Name = "🦜  Pirate", Ids = {Idle = {750781874, 750782770}, Walk = {750785693}, Run = {750783738}, Jump = {750782230}, Fall = {750780242}, Climb = {750779899}, Swim = {750784579}, SwimIdle = {750785176}}},
+        {Name = "🤖  Robot", Ids = {Idle = {616088211, 616089559}, Walk = {616095330}, Run = {616091570}, Jump = {616090535}, Fall = {616087089}, Climb = {616086039}, Swim = {616092998}, SwimIdle = {616094091}}},
+        {Name = "🚶  Rthro", Ids = {Idle = {2510197257, 2510196951}, Walk = {2510202577}, Run = {2510198475}, Jump = {2510197830}, Fall = {2510195892}, Climb = {2510192778}, Swim = {2510199791}, SwimIdle = {2510201162}}},
+        {Name = "😎  Stylish", Ids = {Idle = {616136790, 616138447}, Walk = {616146177}, Run = {616140816}, Jump = {616139451}, Fall = {616134815}, Climb = {616133594}, Swim = {616143378}, SwimIdle = {616144772}}},
+        {Name = "🦸  Superhero", Ids = {Idle = {616111295, 616113536}, Walk = {616122287}, Run = {616117076}, Jump = {616115533}, Fall = {616108001}, Climb = {616104706}, Swim = {616119360}, SwimIdle = {616120861}}},
+        {Name = "🧸  Toy", Ids = {Idle = {782841498, 782845736}, Walk = {782843345}, Run = {782842708}, Jump = {782847020}, Fall = {782846423}, Climb = {782843869}, Swim = {782844582}, SwimIdle = {782845186}}},
+        {Name = "🧛  Vampire", Ids = {Idle = {1083445855, 1083450166}, Walk = {1083473930}, Run = {1083462077}, Jump = {1083455352}, Fall = {1083443587}, Climb = {1083439238}, Swim = {1083464683}, SwimIdle = {1083467779}}},
+        {Name = "🐺  Werewolf", Ids = {Idle = {1083195517, 1083214717}, Walk = {1083178339}, Run = {1083216690}, Jump = {1083218792}, Fall = {1083189019}, Climb = {1083182000}, Swim = {1083222527}, SwimIdle = {1083225406}}},
+        {Name = "🧟  Zombie", Ids = {Idle = {616158929, 616160636}, Walk = {616168032}, Run = {616163682}, Jump = {616161997}, Fall = {616157476}, Climb = {616156119}, Swim = {616165109}, SwimIdle = {616166655}}},
+    }
+
+    local function applyPack(pack)
+        local hum, char = getHum()
+        if not hum then return false, "Karakter belum tersedia." end
+        if hum.RigType ~= Enum.HumanoidRigType.R15 then
+            return false, "Paket animasi hanya untuk karakter R15."
+        end
+        local animate = char:FindFirstChild("Animate")
+        if not animate then return false, "Script Animate tidak ditemukan." end
+        local any = false
+        for cat, ids in pairs(pack.Ids) do
+            local list = {}
+            for i, id in ipairs(ids) do list[i] = "rbxassetid://" .. tostring(id) end
+            if applyAnimation(cat, list, true) then any = true end
+        end
+        if any then restartAnimate(hum, animate) end
+        return any, "Gagal memasang paket ini."
     end
 
     -- emote berhenti kalau karakter bergerak (seperti emote bawaan)
@@ -4700,25 +5078,50 @@ Inv.emoteTab = (function()
             or (total .. " hasil. Ketuk item untuk memakai."))
     end
 
-    local function render()
+    local lastMode
+    local function render(m)
+        CATS = (m == "emote") and EMOTE_CATS or ANIM_CATS
+        if lastMode ~= m then
+            catIdx, keyword, lastMode = 1, "", m
+        end
         clearContent()
         rows = {}
-        label("🎭 EMOTE & ANIMASI KATALOG")
-        statusLabel = label("Ketik nama emote / animasi, hasil muncul otomatis.")
+        label(m == "emote" and "🎭 EMOTE" or "🏃 ANIMASI")
+        statusLabel = label(m == "emote"
+            and "Ketik nama emote, hasil muncul otomatis."
+            or "Pilih paket (1 klik) atau cari animasi satuan.")
         statusLabel.Font = Enum.Font.Gotham
         statusLabel.TextSize = 12
         statusLabel.TextColor3 = GREY
 
-        button("Kategori: " .. CATS[catIdx][1] .. "  (ketuk untuk ganti)", function()
-            catIdx = catIdx % #CATS + 1
-            render()
-        end)
+        if m == "anim" then
+            label("📦 PAKET ANIMASI  (ketuk = pasang semua gerakan)")
+            for _, pack in ipairs(PACKS) do
+                button(pack.Name, function()
+                    setStatus("Memasang " .. pack.Name .. "...")
+                    task.spawn(function()
+                        local ok, why = applyPack(pack)
+                        setStatus(ok and ("Paket dipakai: " .. pack.Name) or why)
+                    end)
+                end)
+            end
+            button("🔁  Kembalikan semua animasi ke bawaan", function()
+                resetAnimations()
+                setStatus("Animasi dikembalikan ke bawaan.")
+            end)
+            label("🔎 CARI ANIMASI SATUAN (katalog)")
+            button("Kategori: " .. CATS[catIdx][1] .. "  (ketuk untuk ganti)", function()
+                catIdx = catIdx % #CATS + 1
+                render(m)
+            end)
+        end
+
         button("Urut: " .. SORTS[sortIdx][1] .. "  (ketuk untuk ganti)", function()
             sortIdx = sortIdx % #SORTS + 1
-            render()
+            render(m)
         end)
 
-        local box = textbox("Cari nama emote / animasi...")
+        local box = textbox(m == "emote" and "Cari nama emote..." or "Cari nama animasi...")
         box.Text = keyword
         local typeToken = 0
         box:GetPropertyChangedSignal("Text"):Connect(function()
@@ -4733,16 +5136,14 @@ Inv.emoteTab = (function()
             if enter and isActive() then doSearch() end
         end)
 
-        button("⏹  Stop Emote", stopEmote)
-        button("🔁  Reset animasi ke bawaan", function()
-            resetAnimations()
-            setStatus("Animasi dikembalikan ke bawaan.")
-        end)
+        if m == "emote" then
+            button("⏹  Stop Emote", stopEmote)
+        end
 
         task.spawn(doSearch)
     end
 
-    return render
+    return function() render("emote") end, function() render("anim") end
 end)()
 
 --====================================
@@ -4906,8 +5307,9 @@ makeTab("🖼  Ganti Gambar", signTab)
 makeTab("🎒  Tempel / Backpack", tempelTab)
 makeTab("👤  Salin Avatar", avatarTab)
 makeTab("🪙  Coin Hutan", coinHutanTab)
-makeTab("🎭  Emote & Animasi", Inv.emoteTab)
+makeTab("🎭  Emote", Inv.emoteTab)
+makeTab("🏃  Animasi", Inv.animTab)
 
 homeTab()
 
-print("DiiUi HUB V3.6 loaded successfully!")  
+print("DiiUi HUB V3.6 loaded successfully!")
