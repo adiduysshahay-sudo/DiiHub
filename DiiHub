@@ -35,7 +35,6 @@ local AllowedUsernames = {
     "adefabian7",
     "haushh42",
     "AYELxzy978",
-    "9Eustaquinaa",
 
 }
 
@@ -154,7 +153,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -110, 1, 0)
 Title.Position = UDim2.fromOffset(15, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "✦ DiiUi HUB"
+Title.Text = "✨ DiiUi HUB"
 Title.TextColor3 = WHITE
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 19
@@ -176,7 +175,7 @@ local function topButton(txt, x)
 end
 
 local MinButton = topButton("-", -82)
-local CloseButton = topButton("×", -42)
+local CloseButton = topButton("❌", -42)
 
 --====================================
 -- DiiUi HUB: DRAG (semua jendela & tombol mini bisa digeser)
@@ -507,7 +506,7 @@ else
     local fallback = Instance.new("TextLabel")
     fallback.Size = UDim2.fromScale(1, 1)
     fallback.BackgroundTransparency = 1
-    fallback.Text = "✦"
+    fallback.Text = "✨"
     fallback.TextColor3 = Color3.fromRGB(255, 90, 160)
     fallback.Font = Enum.Font.GothamBold
     fallback.TextSize = 20
@@ -695,7 +694,7 @@ local function textbox(placeholder)
     return t
 end
 
--- SLIDER GESER KE SAMPING (mouse & sentuh) + tombol halus ◀ ▶
+-- SLIDER GESER KE SAMPING (mouse & sentuh) + tombol halus ⏪ ⏩
 local function slider(titleText, minV, maxV, startV, step, onChange, fmt)
     local holder = Instance.new("Frame")
     holder.Size = UDim2.new(1, -5, 0, 58)
@@ -757,8 +756,8 @@ local function slider(titleText, minV, maxV, startV, step, onChange, fmt)
         Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
         return b
     end
-    local minus = mini("◀", -68)
-    local plus = mini("▶", -36)
+    local minus = mini("⏪", -68)
+    local plus = mini("⏩", -36)
 
     local value = math.clamp(tonumber(startV) or minV, minV, maxV)
     local function render()
@@ -820,7 +819,7 @@ local function slider(titleText, minV, maxV, startV, step, onChange, fmt)
 end
 
 local function notify(msg)
-    label("✦ " .. msg)
+    label("✨ " .. msg)
 end
 
 -- PLAYER CHARACTER
@@ -1109,7 +1108,7 @@ local function invisibleTab()
         end
     end
     if n == 0 then label("Belum ada pemain lain di server.") end
-    button("⟳  Refresh Daftar", invisibleTab)
+    button("🔄  Refresh Daftar", invisibleTab)
     label("Efek hanya terlihat di layar kamu sendiri (client).")
 end
 
@@ -1195,25 +1194,25 @@ local function graphicsTab()
     button("Horror Mode", function() preset("Horror") end)
     button("Sunset Mode", function() preset("Sunset") end)
     button("Night Mode", function() preset("Night") end)
-    button("↺  Reset Graphics", function() preset("Reset") notify("Graphics direset") end)
+    button("🔁  Reset Graphics", function() preset("Reset") notify("Graphics direset") end)
 end
 
 -- TELEPORT TAB: AUTO PLAYER LIST
 local function teleportTab()
     clearContent()
 
-    label("✦ TELEPORT TO PLAYER")
+    label("📍 TELEPORT TO PLAYER")
     label("Pilih pemain dari daftar server:")
 
     local function refreshPlayers()
         clearContent()
 
-        label("✦ TELEPORT TO PLAYER")
+        label("📍 TELEPORT TO PLAYER")
         label("PLAYER LIST - " .. #Players:GetPlayers() .. " PLAYERS")
 
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= LP then
-                button("➤  " .. player.Name, function()
+                button("📍  " .. player.Name, function()
                     local target = player.Character
                     local targetRoot = target and
                         target:FindFirstChild("HumanoidRootPart")
@@ -1233,7 +1232,7 @@ local function teleportTab()
             end
         end
 
-        button("⟳  Refresh Player List", refreshPlayers)
+        button("🔄  Refresh Player List", refreshPlayers)
     end
 
     refreshPlayers()
@@ -1733,7 +1732,7 @@ local function limitedItemTab()
     end
     label("ITEM PRESET")
     for _, item in ipairs(LimitedPresets) do
-        button("＋  " .. item.Name, function()
+        button("➕  " .. item.Name, function()
             if item.Special and LimitedPresets.KbBox and LimitedPresets.KbBox.Parent then
                 LimitedPresets.KorbloxId = LimitedPresets.KbBox.Text
             end
@@ -1765,7 +1764,7 @@ local function limitedItemTab()
     end
     label("Terpilih: " .. selectedLimited)
     local cfg = getLimitedConfig(selectedLimited)
-    label("Geser slider ke samping. ◀ ▶ untuk atur halus.")
+    label("Geser slider ke samping. ⏪ ⏩ untuk atur halus.")
     local fields = {
         {"Ukuran (%)", "Scale", 20, 300},
         {"Posisi X (kiri/kanan)", "X", -300, 300},
@@ -1856,7 +1855,7 @@ local PadHandle = Instance.new("TextButton")
 PadHandle.Size = UDim2.new(1, 0, 0, 24)
 PadHandle.BackgroundColor3 = PURPLE
 PadHandle.BackgroundTransparency = 0.25
-PadHandle.Text = "✥ Free Cam"
+PadHandle.Text = "🎥 Free Cam"
 PadHandle.TextColor3 = WHITE
 PadHandle.Font = Enum.Font.GothamBold
 PadHandle.TextSize = 11
@@ -1893,12 +1892,12 @@ local function holdButton(txt, x, y, axis, dir)
         end
     end)
 end
-holdButton("▲", 52, 28, "Z", -1)
-holdButton("◀", 4, 76, "X", -1)
-holdButton("▶", 100, 76, "X", 1)
-holdButton("▼", 52, 124, "Z", 1)
-holdButton("⇑", 4, 28, "Y", 1)
-holdButton("⇓", 100, 28, "Y", -1)
+holdButton("🔼", 52, 28, "Z", -1)
+holdButton("⏪", 4, 76, "X", -1)
+holdButton("⏩", 100, 76, "X", 1)
+holdButton("🔽", 52, 124, "Z", 1)
+holdButton("⏫", 4, 28, "Y", 1)
+holdButton("⏬", 100, 28, "Y", -1)
 
 -- Kunci karakter: tombol gerak tidak menggerakkan karakter selama Free Cam
 local function lockCharacter(state)
@@ -2073,7 +2072,7 @@ local function freeCamTab()
         local b
         local function paint()
             local on = getState()
-            b.Text = text .. (on and "  :  ON ✔" or "  :  OFF")
+            b.Text = text .. (on and "  :  ON ✅" or "  :  OFF")
             b.BackgroundColor3 = on and Color3.fromRGB(40, 150, 90) or Color3.fromRGB(65, 39, 105)
         end
         b = button(text, function() onToggle() paint() end)
@@ -2130,15 +2129,87 @@ local function freeCamTab()
 end
 
 --====================================
--- NANA COIN HUTAN (READ-ONLY COIN PANEL)
--- Menampilkan saldo Coins yang direplikasi oleh game.
--- Tidak memanggil GiveCoinsEvent atau mengubah saldo server.
+-- COIN HUTAN
+-- Saldo coin (read-only) + pencari koin di map (highlight / ambil).
+-- Jumlah koin bisa diatur lewat slider.
 --====================================
-local function nanaCoinTab()
-    clearContent()
-    label("NANA COIN HUTAN")
-    label("Coin Balance - tampilan lokal/read-only")
+local coinHutanTab
+do
+local CoinHutan = {
+    Amount = 10,
+    Keywords = {"coin", "koin"},
+    Running = false,
+    Highlights = {},
+}
 
+local function coinMatches(name)
+    name = name:lower()
+    for _, k in ipairs(CoinHutan.Keywords) do
+        if k ~= "" and name:find(k, 1, true) then return true end
+    end
+    return false
+end
+
+local function coinPart(obj)
+    if obj:IsA("BasePart") then return obj end
+    if obj:IsA("Model") then
+        return obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true)
+    end
+end
+
+local function coinScan()
+    local found, seen = {}, {}
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if (obj:IsA("BasePart") or obj:IsA("Model")) and coinMatches(obj.Name) then
+            local part = coinPart(obj)
+            local owner = part and part:FindFirstAncestorOfClass("Model")
+            if part and not seen[part]
+            and not (owner and Players:GetPlayerFromCharacter(owner)) then
+                seen[part] = true
+                table.insert(found, {obj = obj, part = part})
+            end
+        end
+    end
+    local char = LP.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        table.sort(found, function(x, y)
+            return (x.part.Position - hrp.Position).Magnitude
+                < (y.part.Position - hrp.Position).Magnitude
+        end)
+    end
+    return found
+end
+
+local function coinClearHighlights()
+    for _, h in ipairs(CoinHutan.Highlights) do pcall(function() h:Destroy() end) end
+    CoinHutan.Highlights = {}
+end
+
+local function coinHighlight(list)
+    coinClearHighlights()
+    for i = 1, math.min(CoinHutan.Amount, #list) do
+        local h = Instance.new("Highlight")
+        h.FillColor = Color3.fromRGB(255, 215, 0)
+        h.OutlineColor = Color3.new(1, 1, 1)
+        h.FillTransparency = 0.3
+        h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        h.Adornee = list[i].obj
+        h.Parent = Gui
+        table.insert(CoinHutan.Highlights, h)
+    end
+end
+
+Gui.Destroying:Connect(function()
+    CoinHutan.Running = false
+    coinClearHighlights()
+end)
+
+coinHutanTab = function()
+    clearContent()
+    label("🪙 COIN HUTAN")
+
+    -- saldo coin (read-only)
     local balanceLabel = label("Coins: memuat...")
     local function refreshCoinBalance()
         local stats = LP:FindFirstChild("leaderstats")
@@ -2147,19 +2218,93 @@ local function nanaCoinTab()
             or stats:FindFirstChild("Coin")
             or stats:FindFirstChild("Cash")
         )
-
         if coins and (coins:IsA("IntValue") or coins:IsA("NumberValue")) then
             balanceLabel.Text = "Coins: " .. tostring(coins.Value)
         else
             balanceLabel.Text = "Coins: tidak ditemukan"
         end
     end
-
-    button("Refresh Coin Balance", refreshCoinBalance)
-    label("Panel ini hanya membaca saldo yang tersedia di client.")
-    label("Penambahan koin harus dilakukan oleh sistem resmi server game.")
-
+    button("🔄  Refresh Coin Balance", refreshCoinBalance)
     refreshCoinBalance()
+
+    -- pencari koin
+    label("🔍 CARI KOIN DI MAP")
+    slider("Jumlah Koin", 1, 100, CoinHutan.Amount, 1, function(v)
+        CoinHutan.Amount = math.floor(v)
+    end)
+
+    local kb = textbox("Kata kunci nama koin, pisah koma (contoh: coin,koin)")
+    kb.Text = table.concat(CoinHutan.Keywords, ",")
+    local function applyKeywords()
+        local list = {}
+        for k in kb.Text:gmatch("[^,]+") do
+            k = k:gsub("^%s+", ""):gsub("%s+$", ""):lower()
+            if k ~= "" then table.insert(list, k) end
+        end
+        if #list > 0 then CoinHutan.Keywords = list end
+    end
+
+    local status = label("Siap.")
+    local function setStatus(t)
+        if status and status.Parent then status.Text = t end
+    end
+
+    button("🔍  Cari & tandai koin", function()
+        applyKeywords()
+        local list = coinScan()
+        coinHighlight(list)
+        setStatus(("Ditemukan %d koin, %d ditandai."):format(
+            #list, math.min(CoinHutan.Amount, #list)))
+    end)
+
+    button("🪙  Ambil koin", function()
+        if CoinHutan.Running then return end
+        applyKeywords()
+        local list = coinScan()
+        if #list == 0 then
+            setStatus("Koin tidak ditemukan. Coba ganti kata kunci.")
+            return
+        end
+        coinHighlight(list)
+        local char = LP.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+
+        CoinHutan.Running = true
+        task.spawn(function()
+            local origin = hrp.CFrame
+            local total = math.min(CoinHutan.Amount, #list)
+            local got = 0
+            for i = 1, total do
+                if not CoinHutan.Running or not hrp.Parent then break end
+                local item = list[i]
+                if item.part and item.part.Parent then
+                    hrp.CFrame = item.part.CFrame + Vector3.new(0, 2, 0)
+                    if firetouchinterest then
+                        pcall(function()
+                            firetouchinterest(hrp, item.part, 0)
+                            firetouchinterest(hrp, item.part, 1)
+                        end)
+                    end
+                    got += 1
+                    setStatus(("Mengambil %d / %d"):format(got, total))
+                    task.wait(0.25)
+                end
+            end
+            if hrp.Parent then hrp.CFrame = origin end
+            CoinHutan.Running = false
+            setStatus(("Selesai: %d koin dikunjungi."):format(got))
+        end)
+    end)
+
+    button("🛑  Stop / Hapus tanda", function()
+        CoinHutan.Running = false
+        coinClearHighlights()
+        setStatus("Dihentikan.")
+    end)
+
+    label("Kalau koin tidak ketemu, ganti kata kunci sesuai nama koin di map.")
+end
 end
 
 --====================================
@@ -2352,7 +2497,7 @@ local function toggleButton(text, getState, onToggle)
     local b
     local function paint()
         local on = getState()
-        b.Text = text .. (on and "  :  ON ✔" or "  :  OFF")
+        b.Text = text .. (on and "  :  ON ✅" or "  :  OFF")
         b.BackgroundColor3 = on and Color3.fromRGB(40, 150, 90) or Color3.fromRGB(65, 39, 105)
     end
     b = button(text, function()
@@ -2506,7 +2651,7 @@ local function avatarTab()
         end
     end
     if not any then label("Belum ada pemain lain di server.") end
-    button("↩  Kembalikan Avatar Asli", restoreAvatar)
+    button("🔙  Kembalikan Avatar Asli", restoreAvatar)
     label("PEMAIN DI LUAR SERVER (opsional)")
     avatarBox = textbox("Username atau UserId")
     button("Salin dari yang diketik", function()
@@ -2526,7 +2671,7 @@ end
 --====================================
 -- TEMPEL / BACKPACK V3
 -- Tap username -> langsung menempel. Gaya bisa diganti kapan saja saat menempel.
--- Lepas: lompat, tombol ✖ di layar, atau tombol di menu.
+-- Lepas: lompat, tombol ❌ di layar, atau tombol di menu.
 --====================================
 local Tempel = {Target = nil, StyleIdx = 1, T = 0, Saved = nil}
 local TempelStyles = {
@@ -2556,7 +2701,7 @@ detachBtn.Name = "DiiUiDetach"
 detachBtn.Size = UDim2.fromOffset(140, 40)
 detachBtn.Position = UDim2.new(0.5, -70, 1, -90)
 detachBtn.BackgroundColor3 = Color3.fromRGB(190, 50, 80)
-detachBtn.Text = "✖ Lepas Tempel"
+detachBtn.Text = "❌ Lepas Tempel"
 detachBtn.TextColor3 = Color3.new(1, 1, 1)
 detachBtn.Font = Enum.Font.GothamBold
 detachBtn.TextSize = 13
@@ -2677,7 +2822,7 @@ updateTempelUI = function()
     local ui = tempelUI
     if not (ui.status and ui.status.Parent) then return end
     if Tempel.Target then
-        ui.status.Text = "✔ Menempel ke  " .. dn(Tempel.Target) .. "\nGaya: " .. TempelStyles[Tempel.StyleIdx].Name
+        ui.status.Text = "✅ Menempel ke  " .. dn(Tempel.Target) .. "\nGaya: " .. TempelStyles[Tempel.StyleIdx].Name
         ui.detach.Visible = true
     else
         ui.status.Text = "Belum menempel\nTap username pemain di bawah"
@@ -2687,7 +2832,7 @@ updateTempelUI = function()
     for p, card in pairs(ui.cards) do
         local on = (Tempel.Target == p)
         card.BackgroundColor3 = on and PURPLE or CARD
-        if ui.subs[p] then ui.subs[p].Text = on and "✔ sedang menempel" or "tap untuk menempel" end
+        if ui.subs[p] then ui.subs[p].Text = on and "✅ sedang menempel" or "tap untuk menempel" end
     end
 end
 
@@ -2721,7 +2866,7 @@ local function tempelTab()
     dt.Size = UDim2.fromOffset(88, 34)
     dt.Position = UDim2.new(1, -96, 0.5, -17)
     dt.BackgroundColor3 = Color3.fromRGB(190, 50, 80)
-    dt.Text = "✖ Lepas"
+    dt.Text = "❌ Lepas"
     dt.TextColor3 = WHITE
     dt.Font = Enum.Font.GothamBold
     dt.TextSize = 13
@@ -2798,7 +2943,7 @@ local function tempelTab()
         end
     end
     if not any then label("Belum ada pemain lain di server.") end
-    label("Lepas: tekan lompat / tombol ✖ di layar / tombol ✖ Lepas.")
+    label("Lepas: tekan lompat / tombol ❌ di layar / tombol ❌ Lepas.")
     updateTempelUI()
 end
 
@@ -3074,14 +3219,14 @@ local function flyHold(txt, x, dir)
         end
     end)
 end
-flyHold("▲", 8, 1)
-flyHold("▼", 78, -1)
+flyHold("🔼", 8, 1)
+flyHold("🔽", 78, -1)
 local flyStopBtn = Instance.new("TextButton")
 flyStopBtn.Size = UDim2.fromOffset(134, 38)
 flyStopBtn.Position = UDim2.fromOffset(8, 82)
 flyStopBtn.BackgroundColor3 = Color3.fromRGB(190, 50, 80)
 flyStopBtn.BackgroundTransparency = 0.15
-flyStopBtn.Text = "✖ Stop Fly"
+flyStopBtn.Text = "❌ Stop Fly"
 flyStopBtn.TextColor3 = WHITE
 flyStopBtn.Font = Enum.Font.GothamBold
 flyStopBtn.TextSize = 13
@@ -3256,7 +3401,7 @@ local function flyTab()
         local r = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
         if Fly.Enabled and r then buildAura(r) end
     end, 44)
-    label("PC: WASD gerak, Space naik, Ctrl turun, Shift ngebut.\nHP: joystick + tombol ▲ ▼ di layar.\nHotkey: F = Fly, N = NoClip.")
+    label("PC: WASD gerak, Space naik, Ctrl turun, Shift ngebut.\nHP: joystick + tombol 🔼 🔽 di layar.\nHotkey: F = Fly, N = NoClip.")
 end
 
 -- daftar pemain otomatis ter-refresh saat ada yang masuk / keluar
@@ -3917,7 +4062,7 @@ do
         toggleButton("🕹  Kendali Grobak (WASD / joystick)",
             function() return Cart.Drive end,
             function() Cart.Drive = not Cart.Drive end)
-        toggleButton("↻  Grobak menghadap arah gerak",
+        toggleButton("🔄  Grobak menghadap arah gerak",
             function() return Cart.Face end,
             function() Cart.Face = not Cart.Face end)
         slider("Kecepatan Grobak", 10, 150, Cart.Speed, 1, function(v)
@@ -3962,7 +4107,7 @@ do
             end
         end
 
-        button("↻  Pindai ulang", function() cartTab() end)
+        button("🔍  Pindai ulang", function() cartTab() end)
 
         button("🔍  Tampilkan SEMUA Seat (abaikan kata kunci)", function()
             clearContent()
@@ -4143,7 +4288,7 @@ do
             rm.Size = UDim2.fromOffset(60, 34)
             rm.Position = UDim2.new(1, -68, 0.5, -17)
             rm.BackgroundColor3 = Color3.fromRGB(190, 50, 80)
-            rm.Text = "✖ Hapus"
+            rm.Text = "❌ Hapus"
             rm.TextColor3 = WHITE
             rm.Font = Enum.Font.GothamBold
             rm.TextSize = 12
@@ -4248,7 +4393,7 @@ do
                 local isSel = Sign.Selected and Sign.Selected.inst == item.inst
                 imageCard({
                     preview = item.preview,
-                    title = (edited and "✔ " or "") .. item.name,
+                    title = (edited and "✅ " or "") .. item.name,
                     subtitle = string.format("%d stud%s", math.floor(item.dist),
                         isSel and "  •  target sekarang" or ""),
                     selected = isSel,
@@ -4260,8 +4405,8 @@ do
             end
         end
 
-        button("↻  Pindai ulang", function() signTab() end)
-        button("↺  Kembalikan SEMUA ke gambar asli", function()
+        button("🔍  Pindai ulang", function() signTab() end)
+        button("🔙  Kembalikan SEMUA ke gambar asli", function()
             local n = revertAll()
             toast(n > 0 and ("Dikembalikan " .. n .. " gambar") or "Belum ada yang diganti")
             signTab()
@@ -4276,13 +4421,337 @@ do
     end
 end
 
+--====================================
+-- EMOTE & ANIMASI KATALOG (cari langsung dari katalog Roblox)
+-- Dibungkus fungsi sendiri supaya tidak menambah local di level atas.
+--====================================
+Inv.emoteTab = (function()
+    local AvatarEditorService = game:GetService("AvatarEditorService")
+
+    local CATS = {
+        {"Emote", Enum.AvatarAssetType.EmoteAnimation},
+        {"Idle", Enum.AvatarAssetType.IdleAnimation},
+        {"Walk", Enum.AvatarAssetType.WalkAnimation},
+        {"Run", Enum.AvatarAssetType.RunAnimation},
+        {"Jump", Enum.AvatarAssetType.JumpAnimation},
+        {"Fall", Enum.AvatarAssetType.FallAnimation},
+        {"Climb", Enum.AvatarAssetType.ClimbAnimation},
+        {"Swim", Enum.AvatarAssetType.SwimAnimation},
+    }
+    local SORTS = {
+        {"Terbaru", Enum.CatalogSortType.RecentlyCreated},
+        {"Relevan", Enum.CatalogSortType.Relevance},
+        {"Terlaris", Enum.CatalogSortType.Bestselling},
+        {"Favorit", Enum.CatalogSortType.MostFavorited},
+    }
+    -- kategori -> {folder di script Animate, nama Animation di dalamnya}
+    local ANIMATE_MAP = {
+        Idle = {"idle", {"Animation1", "Animation2"}},
+        Walk = {"walk", {"WalkAnim"}},
+        Run = {"run", {"RunAnim"}},
+        Jump = {"jump", {"JumpAnim"}},
+        Fall = {"fall", {"FallAnim"}},
+        Climb = {"climb", {"ClimbAnim"}},
+        Swim = {"swim", {"Swim"}},
+    }
+    local MAX_RESULTS = 200 -- batas aman biar menu tidak berat di HP
+
+    local catIdx, sortIdx = 1, 1
+    local keyword = ""
+    local searchId = 0
+    local rows = {}
+    local cache = {}      -- assetId -> daftar AnimationId
+    local chosen = {}     -- kategori -> assetId (dipasang ulang saat respawn)
+    local originals = {}  -- kategori -> {namaAnim = idAsli}
+    local currentTrack
+    local statusLabel
+
+    local function isActive()
+        return ActiveTab == Inv.emoteTab and statusLabel and statusLabel.Parent ~= nil
+    end
+
+    local function setStatus(t)
+        if statusLabel and statusLabel.Parent then statusLabel.Text = t end
+    end
+
+    local function getHum()
+        local char = LP.Character
+        return char and char:FindFirstChildOfClass("Humanoid"), char
+    end
+
+    local function getAnimationIds(assetId)
+        if cache[assetId] then return cache[assetId] end
+        local ok, objs = pcall(function()
+            return game:GetObjects("rbxassetid://" .. tostring(assetId))
+        end)
+        if not ok or type(objs) ~= "table" then return nil end
+        local ids = {}
+        for _, o in ipairs(objs) do
+            if o:IsA("Animation") and o.AnimationId ~= "" then
+                table.insert(ids, o.AnimationId)
+            end
+            for _, d in ipairs(o:GetDescendants()) do
+                if d:IsA("Animation") and d.AnimationId ~= "" then
+                    table.insert(ids, d.AnimationId)
+                end
+            end
+        end
+        if #ids == 0 then return nil end
+        cache[assetId] = ids
+        return ids
+    end
+
+    local function stopEmote()
+        if currentTrack then
+            pcall(function() currentTrack:Stop(0.2) end)
+            currentTrack = nil
+        end
+    end
+
+    local function playEmote(assetId)
+        local hum = getHum()
+        if not hum then return false end
+        local ids = getAnimationIds(assetId)
+        if not ids then return false end
+        local animator = hum:FindFirstChildOfClass("Animator")
+        if not animator then
+            animator = Instance.new("Animator")
+            animator.Parent = hum
+        end
+        stopEmote()
+        local anim = Instance.new("Animation")
+        anim.AnimationId = ids[1]
+        local ok, track = pcall(function() return animator:LoadAnimation(anim) end)
+        if not ok or not track then return false end
+        track.Priority = Enum.AnimationPriority.Action
+        track:Play(0.2)
+        currentTrack = track
+        return true
+    end
+
+    local function restartAnimate(hum, animate)
+        for _, t in ipairs(hum:GetPlayingAnimationTracks()) do
+            pcall(function() t:Stop(0) end)
+        end
+        animate.Disabled = true
+        task.wait()
+        animate.Disabled = false
+    end
+
+    local function applyAnimation(category, assetId)
+        local map = ANIMATE_MAP[category]
+        local hum, char = getHum()
+        if not map or not hum then return false end
+        local animate = char:FindFirstChild("Animate")
+        local folder = animate and animate:FindFirstChild(map[1])
+        if not folder then return false end
+        local ids = getAnimationIds(assetId)
+        if not ids then return false end
+
+        originals[category] = originals[category] or {}
+        for i, animName in ipairs(map[2]) do
+            local a = folder:FindFirstChild(animName)
+            if a then
+                if originals[category][animName] == nil then
+                    originals[category][animName] = a.AnimationId
+                end
+                a.AnimationId = ids[i] or ids[1]
+            end
+        end
+        restartAnimate(hum, animate)
+        chosen[category] = assetId
+        return true
+    end
+
+    local function resetAnimations()
+        chosen = {}
+        local hum, char = getHum()
+        local animate = char and char:FindFirstChild("Animate")
+        if hum and animate then
+            for cat, saved in pairs(originals) do
+                local map = ANIMATE_MAP[cat]
+                local folder = map and animate:FindFirstChild(map[1])
+                if folder then
+                    for animName, id in pairs(saved) do
+                        local a = folder:FindFirstChild(animName)
+                        if a then a.AnimationId = id end
+                    end
+                end
+            end
+            restartAnimate(hum, animate)
+        end
+        originals = {}
+    end
+
+    -- emote berhenti kalau karakter bergerak (seperti emote bawaan)
+    RunService.Heartbeat:Connect(function()
+        if currentTrack then
+            local hum = getHum()
+            if hum and hum.MoveDirection.Magnitude > 0.1 then stopEmote() end
+        end
+    end)
+
+    -- pasang ulang animasi pilihan setelah respawn
+    LP.CharacterAdded:Connect(function(char)
+        currentTrack = nil
+        originals = {}
+        task.spawn(function()
+            if not char:WaitForChild("Humanoid", 10) then return end
+            if not char:WaitForChild("Animate", 10) then return end
+            task.wait(1)
+            for cat, id in pairs(chosen) do
+                pcall(applyAnimation, cat, id)
+            end
+        end)
+    end)
+
+    local function clearRows()
+        for _, r in ipairs(rows) do
+            if r and r.Parent then r:Destroy() end
+        end
+        rows = {}
+    end
+
+    local function addItems(items)
+        local added = 0
+        for _, item in ipairs(items) do
+            if item.ItemType ~= Enum.AvatarItemType.Bundle then
+                local b = Instance.new("TextButton")
+                b.Size = UDim2.new(1, -5, 0, 54)
+                b.BackgroundColor3 = Color3.fromRGB(65, 39, 105)
+                b.Text = ""
+                b.AutoButtonColor = true
+                b.Parent = Content
+                Instance.new("UICorner", b).CornerRadius = UDim.new(0, 7)
+
+                local img = Instance.new("ImageLabel")
+                img.Size = UDim2.fromOffset(44, 44)
+                img.Position = UDim2.fromOffset(5, 5)
+                img.BackgroundTransparency = 1
+                img.Image = string.format("rbxthumb://type=Asset&id=%d&w=150&h=150", item.Id)
+                img.Parent = b
+
+                local nameLbl = Instance.new("TextLabel")
+                nameLbl.Position = UDim2.fromOffset(56, 0)
+                nameLbl.Size = UDim2.new(1, -62, 1, 0)
+                nameLbl.BackgroundTransparency = 1
+                nameLbl.Active = false
+                nameLbl.Text = tostring(item.Name)
+                nameLbl.TextColor3 = WHITE
+                nameLbl.Font = Enum.Font.GothamSemibold
+                nameLbl.TextSize = 12
+                nameLbl.TextWrapped = true
+                nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+                nameLbl.Parent = b
+
+                guardedClick(b, Content, function()
+                    setStatus("Memuat " .. tostring(item.Name) .. "...")
+                    task.spawn(function()
+                        local ok
+                        if CATS[catIdx][1] == "Emote" then
+                            ok = playEmote(item.Id)
+                        else
+                            ok = applyAnimation(CATS[catIdx][1], item.Id)
+                        end
+                        setStatus(ok and ("Dipakai: " .. tostring(item.Name))
+                            or "Gagal memuat item ini (item berbayar yang belum dimiliki sering gagal). Coba item lain.")
+                    end)
+                end)
+
+                table.insert(rows, b)
+                added = added + 1
+            end
+        end
+        return added
+    end
+
+    local function doSearch()
+        searchId = searchId + 1
+        local my = searchId
+        clearRows()
+        setStatus("Mencari...")
+
+        local params = CatalogSearchParams.new()
+        params.SearchKeyword = keyword
+        params.AssetTypes = {CATS[catIdx][2]}
+        params.SortType = SORTS[sortIdx][2]
+        params.IncludeOffSale = true
+        params.Limit = 60
+
+        local ok, pages = pcall(function()
+            return AvatarEditorService:SearchCatalog(params)
+        end)
+        if my ~= searchId or not isActive() then return end
+        if not ok or not pages then
+            setStatus("Pencarian gagal. Coba lagi sebentar.")
+            return
+        end
+
+        local total = addItems(pages:GetCurrentPage())
+        while not pages.IsFinished and total < MAX_RESULTS and my == searchId and isActive() do
+            setStatus("Memuat hasil... (" .. total .. ")")
+            local okNext = pcall(function() pages:AdvanceToNextPageAsync() end)
+            if not okNext or my ~= searchId or not isActive() then break end
+            total = total + addItems(pages:GetCurrentPage())
+        end
+
+        if my ~= searchId or not isActive() then return end
+        setStatus(total == 0 and "Tidak ada hasil."
+            or (total .. " hasil. Ketuk item untuk memakai."))
+    end
+
+    local function render()
+        clearContent()
+        rows = {}
+        label("🎭 EMOTE & ANIMASI KATALOG")
+        statusLabel = label("Ketik nama emote / animasi, hasil muncul otomatis.")
+        statusLabel.Font = Enum.Font.Gotham
+        statusLabel.TextSize = 12
+        statusLabel.TextColor3 = GREY
+
+        button("Kategori: " .. CATS[catIdx][1] .. "  (ketuk untuk ganti)", function()
+            catIdx = catIdx % #CATS + 1
+            render()
+        end)
+        button("Urut: " .. SORTS[sortIdx][1] .. "  (ketuk untuk ganti)", function()
+            sortIdx = sortIdx % #SORTS + 1
+            render()
+        end)
+
+        local box = textbox("Cari nama emote / animasi...")
+        box.Text = keyword
+        local typeToken = 0
+        box:GetPropertyChangedSignal("Text"):Connect(function()
+            keyword = box.Text
+            typeToken = typeToken + 1
+            local my = typeToken
+            task.delay(0.6, function()
+                if my == typeToken and isActive() then doSearch() end
+            end)
+        end)
+        box.FocusLost:Connect(function(enter)
+            if enter and isActive() then doSearch() end
+        end)
+
+        button("⏹  Stop Emote", stopEmote)
+        button("🔁  Reset animasi ke bawaan", function()
+            resetAnimations()
+            setStatus("Animasi dikembalikan ke bawaan.")
+        end)
+
+        task.spawn(doSearch)
+    end
+
+    return render
+end)()
+
 -- CREATE TABS
 makeTab("⌂  Home", homeTab)
 makeTab("☀  Graphics", graphicsTab)
-makeTab("➤  Teleport", teleportTab)
+makeTab("📍  Teleport", teleportTab)
 makeTab("◉  Spectator", spectatorTab)
 makeTab("👻  Invisible", Inv.tab)
-makeTab("✦  Limited Items", limitedItemTab)
+makeTab("💎  Limited Items", limitedItemTab)
 makeTab("◎  Free Cam", freeCamTab)
 makeTab("⚡  Speed & Jump", moveTab)
 makeTab("🕊  Fly & NoClip", flyTab)
@@ -4291,8 +4760,9 @@ makeTab("🛒  Grobak", cartTab)
 makeTab("🖼  Ganti Gambar", signTab)
 makeTab("🎒  Tempel / Backpack", tempelTab)
 makeTab("👤  Salin Avatar", avatarTab)
-makeTab("🌿  Nana Coin Hutan", nanaCoinTab)
+makeTab("🪙  Coin Hutan", coinHutanTab)
+makeTab("🎭  Emote & Animasi", Inv.emoteTab)
 
 homeTab()
 
-print("DiiUi HUB V3.5 loaded successfully!")
+print("DiiUi HUB V3.6 loaded successfully!")
