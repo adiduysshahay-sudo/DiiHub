@@ -33,8 +33,8 @@ local AllowedUsernames = {
     "Celvin_tin",
     "Hantu_belau2",
     "adefabian7",
-    "haushh42",
     "AYELxzy978",
+    "haushh42",
 
 }
 
@@ -998,8 +998,31 @@ local function rainProps(rate, smin, smax, size, tr)
     }
 end
 
+
+-- Matikan blur / depth-of-field milik game (untuk mode HD anti blur), dipulihkan saat Reset
+local blurSaved = {}
+local function disableGameBlur()
+    local function scan(parent)
+        for _, v in ipairs(parent:GetChildren()) do
+            if (v:IsA("BlurEffect") or v:IsA("DepthOfFieldEffect")) and not v.Name:match("^DiiUi_") then
+                if blurSaved[v] == nil then blurSaved[v] = v.Enabled end
+                v.Enabled = false
+            end
+        end
+    end
+    scan(Lighting)
+    if workspace.CurrentCamera then scan(workspace.CurrentCamera) end
+end
+local function restoreGameBlur()
+    for v, was in pairs(blurSaved) do
+        if v.Parent then pcall(function() v.Enabled = was end) end
+    end
+    blurSaved = {}
+end
+
 local function resetLighting()
     stopWeather()
+    restoreGameBlur()
     clearDiiEffects()
     setLight(oldLighting)
     if atmoSaved and atmoSaved.inst and atmoSaved.inst.Parent then
@@ -1225,6 +1248,87 @@ GraphicsPresets.HujanKabut = function()
     startWeather({Size = Vector3.new(80, 1, 80), Height = 22, Count = 4, Props = rainProps(400, 70, 90, 0.45, 0.5)})
 end
 
+
+-- ===== GRAFIK BARU 2 =====
+-- Senja: matahari terbenam, langit oranye-pink
+GraphicsPresets.Senja = function()
+    setLight({ClockTime = 18.2, Brightness = 2.3, GlobalShadows = true, ExposureCompensation = -0.05,
+        FogStart = 300, FogEnd = 4000, FogColor = Color3.fromRGB(255, 170, 120),
+        Ambient = Color3.fromRGB(120, 85, 95), OutdoorAmbient = Color3.fromRGB(165, 110, 115),
+        ColorShift_Top = Color3.fromRGB(255, 170, 110)})
+    local a = getAtmo()
+    a.Density, a.Offset, a.Glare, a.Haze = 0.3, 0.25, 0.8, 1.6
+    a.Color = Color3.fromRGB(255, 175, 120)
+    a.Decay = Color3.fromRGB(255, 110, 95)
+    addFx("ColorCorrectionEffect", "Senja", {TintColor = Color3.fromRGB(255, 200, 170),
+        Contrast = 0.18, Saturation = 0.12})
+    addFx("BloomEffect", "SenjaBloom", {Intensity = 0.6, Size = 36, Threshold = 0.9})
+    addFx("SunRaysEffect", "SenjaRays", {Intensity = 0.3, Spread = 1})
+    setClouds(0.35, 0.5, Color3.fromRGB(255, 190, 160))
+end
+
+-- HD anti blur: tajam maksimal, blur/DOF game dimatikan, kabut udara dihilangkan
+GraphicsPresets.HDAntiBlur = function()
+    disableGameBlur()
+    setLight({Brightness = 3, GlobalShadows = true, ShadowSoftness = 0.05, ExposureCompensation = 0,
+        EnvironmentDiffuseScale = 1, EnvironmentSpecularScale = 1, FogStart = 0, FogEnd = 100000})
+    local a = getAtmo()
+    a.Density, a.Offset, a.Glare, a.Haze = 0.05, 0, 0, 0
+    addFx("ColorCorrectionEffect", "HDAntiBlur", {Contrast = 0.22, Saturation = 0.2, Brightness = 0})
+    setQuality(21)
+end
+
+-- Cinematic + kabut: warna film, garis film, kabut tebal melayang
+GraphicsPresets.CinematicKabut = function()
+    setLight({ClockTime = 17, Brightness = 1.8, ExposureCompensation = -0.2, GlobalShadows = true,
+        ShadowSoftness = 0.3, FogStart = 15, FogEnd = 380, FogColor = Color3.fromRGB(205, 200, 205),
+        Ambient = Color3.fromRGB(110, 100, 110), OutdoorAmbient = Color3.fromRGB(140, 130, 140)})
+    local a = getAtmo()
+    a.Density, a.Offset, a.Glare, a.Haze = 0.55, 0.25, 0.3, 2.8
+    a.Color = Color3.fromRGB(215, 205, 205)
+    a.Decay = Color3.fromRGB(190, 150, 130)
+    addFx("ColorCorrectionEffect", "CineKabut", {TintColor = Color3.fromRGB(255, 232, 210),
+        Contrast = 0.28, Saturation = -0.12, Brightness = -0.02})
+    addFx("BloomEffect", "CineKabutBloom", {Intensity = 0.8, Size = 44, Threshold = 0.85})
+    addFx("DepthOfFieldEffect", "CineKabutDOF", {FarIntensity = 0.3, FocusDistance = 30,
+        InFocusRadius = 35, NearIntensity = 0})
+    addFx("SunRaysEffect", "CineKabutRays", {Intensity = 0.15, Spread = 1})
+    setClouds(0.5, 0.6, Color3.fromRGB(225, 220, 225))
+    setQuality(21)
+    startLetterbox(0.11)
+    -- kabut tipis melayang di sekitar kamera
+    startWeather({Size = Vector3.new(80, 6, 80), Height = 2, Count = 2, Props = {
+        Texture = SMOKE_TEX, Rate = 18,
+        Color = ColorSequence.new(Color3.fromRGB(225, 225, 232)),
+        Size = ns({0, 6}, {0.5, 12}, {1, 14}),
+        Transparency = ns({0, 1}, {0.25, 0.86}, {0.75, 0.86}, {1, 1}),
+        Lifetime = NumberRange.new(9, 12), Speed = NumberRange.new(0.5, 1.5),
+        SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0.6, 0, 0.3),
+        Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-6, 6),
+        LightInfluence = 0.8,
+    }})
+end
+
+-- Cinematic + hujan (suasana galau): biru gelap, murung, hujan, garis film
+GraphicsPresets.CinematicGalau = function()
+    setLight({ClockTime = 19.2, Brightness = 1.2, ExposureCompensation = -0.35, GlobalShadows = true,
+        ShadowSoftness = 0.3, FogStart = 30, FogEnd = 500, FogColor = Color3.fromRGB(95, 110, 135),
+        Ambient = Color3.fromRGB(60, 72, 95), OutdoorAmbient = Color3.fromRGB(80, 95, 120)})
+    local a = getAtmo()
+    a.Density, a.Offset, a.Glare, a.Haze = 0.45, 0.2, 0, 2.2
+    a.Color = Color3.fromRGB(120, 135, 160)
+    a.Decay = Color3.fromRGB(70, 85, 115)
+    addFx("ColorCorrectionEffect", "CineGalau", {TintColor = Color3.fromRGB(190, 210, 240),
+        Contrast = 0.3, Saturation = -0.35, Brightness = -0.03})
+    addFx("BloomEffect", "CineGalauBloom", {Intensity = 0.9, Size = 44, Threshold = 0.8})
+    addFx("DepthOfFieldEffect", "CineGalauDOF", {FarIntensity = 0.3, FocusDistance = 28,
+        InFocusRadius = 30, NearIntensity = 0})
+    setClouds(0.95, 0.85, Color3.fromRGB(90, 100, 118))
+    setQuality(21)
+    startLetterbox(0.12)
+    startWeather({Size = Vector3.new(80, 1, 80), Height = 22, Count = 3, Props = rainProps(250, 60, 80, 0.4, 0.45)})
+end
+
 function preset(name)
     resetLighting() -- selalu mulai dari kondisi asli supaya efek tidak numpuk
     if name == "Reset" then
@@ -1433,6 +1537,10 @@ local function graphicsTab()
     label("🌟 GRAFIK SUPER")
     button("💎  Super HD", function() preset("SuperHD") notify("Super HD aktif") end)
     button("🎞  Super Cinematic", function() preset("SuperCinematic") notify("Super Cinematic aktif") end)
+    button("🌇  Senja", function() preset("Senja") notify("Senja aktif") end)
+    button("🔍  HD Anti Blur", function() preset("HDAntiBlur") notify("HD Anti Blur aktif") end)
+    button("🌫  Cinematic + Kabut", function() preset("CinematicKabut") notify("Cinematic + Kabut aktif") end)
+    button("🌧  Cinematic + Hujan (Galau)", function() preset("CinematicGalau") notify("Cinematic Galau aktif") end)
     label("🌦 CUACA")
     button("❄  Salju", function() preset("Salju") notify("Salju aktif") end)
     button("☀  Kemarau", function() preset("Kemarau") notify("Kemarau aktif") end)
@@ -2930,7 +3038,7 @@ end
 -- Tap username -> langsung menempel. Gaya bisa diganti kapan saja saat menempel.
 -- Lepas: lompat, tombol ❌ di layar, atau tombol di menu.
 --====================================
-local Tempel = {Target = nil, StyleIdx = 1, T = 0, Saved = nil, AnimOn = true, Tracks = {}, AnimKey = nil}
+local Tempel = {Target = nil, StyleIdx = 1, T = 0, Saved = nil, AnimOn = true, Tracks = {}, AnimKey = nil, Predict = true, PredictMul = 1, Vel = nil}
 local TempelStyles = {
     {Name = "🎒 Backpack (di punggung)", Fn = function(t) return CFrame.new(0, 0.2, 1.3) end},
     {Name = "🐴 Gendong naik punggung", Fn = function(t) return CFrame.new(0, 1.0, 0.9) * CFrame.Angles(math.rad(-12), 0, 0) end},
@@ -3018,6 +3126,7 @@ Tempel.UpdateAnim = function(hum, tr)
         track:Play(0.2)
         Tempel.AnimKey = name
     end
+    if not track.IsPlaying then track:Play(0.1) end
     if track.IsPlaying then track:AdjustSpeed(rate) end
 end
 
@@ -3087,6 +3196,7 @@ local function startTempel(player)
     Tempel.IntroDur = 0.22
     Tempel.Last = os.clock()
     Tempel.Lean = 0
+    Tempel.Vel = nil
     if not Tempel.Step then
         Tempel.Step = function()
             local tgt = Tempel.Target
@@ -3110,13 +3220,31 @@ local function startTempel(player)
             local t = Tempel.T
 
             -- badan ikut miring sedikit sesuai arah/kecepatan target (hidup, bukan patung)
-            local lv = tr.CFrame:VectorToObjectSpace(tr.AssemblyLinearVelocity)
+            -- kecepatan target dihaluskan sedikit supaya tidak bergetar
+            local rawV = tr.AssemblyLinearVelocity
+            Tempel.Vel = Tempel.Vel and Tempel.Vel:Lerp(rawV, 1 - math.exp(-dt * 18)) or rawV
+            local lv = tr.CFrame:VectorToObjectSpace(Tempel.Vel)
             local leanGoal = math.clamp(-lv.Z / 16, -1, 1) * math.rad(8)
             Tempel.Lean += (leanGoal - Tempel.Lean) * (1 - math.exp(-dt * 12))
-            local bob = math.sin(t * 2.2) * 0.04
 
-            local desired = tr.CFrame * TempelStyles[Tempel.StyleIdx].Fn(t)
-                * CFrame.new(0, bob, 0) * CFrame.Angles(Tempel.Lean, 0, 0)
+            -- gerak hidup: napas, hentakan langkah, dan goyang kiri-kanan ikut kecepatan target
+            local spd = Vector3.new(Tempel.Vel.X, 0, Tempel.Vel.Z).Magnitude
+            local walkAmt = math.min(spd / 16, 1)
+            local stepRate = math.clamp(spd, 0, 24) * 0.6
+            local bob = math.sin(t * 2.2) * 0.04 + math.abs(math.sin(t * stepRate)) * 0.14 * walkAmt
+            local roll = math.sin(t * stepRate * 0.5) * 0.07 * walkAmt
+
+            -- ANTI DELAY: posisi target di layar kita terlambat sebesar ping, jadi kita
+            -- menempel ke posisi "tebakan ke depan" (posisi + kecepatan x ping)
+            local lead = 0
+            if Tempel.Predict then
+                local okp, ping = pcall(function() return LP:GetNetworkPing() end)
+                lead = math.clamp((okp and ping or 0) * Tempel.PredictMul, 0, 0.35)
+            end
+            local base = tr.CFrame + Tempel.Vel * lead
+
+            local desired = base * TempelStyles[Tempel.StyleIdx].Fn(t)
+                * CFrame.new(0, bob, 0) * CFrame.Angles(Tempel.Lean, 0, roll)
 
             local p = (now - (Tempel.Intro or 0)) / (Tempel.IntroDur or 0.2)
             if p < 1 and Tempel.From then
@@ -3148,6 +3276,38 @@ UIS.JumpRequest:Connect(function()
     if Tempel.Target then stopTempel("Dilepas (lompat)") end
 end)
 
+
+-- GENDONG ORANG: pemain lain ditampilkan menempel di punggungmu.
+-- Hanya terlihat di layarmu sendiri (posisi mereka di server tidak berubah).
+Tempel.Carry = {Target = nil, Conn = nil}
+Tempel.StopCarry = function(msg)
+    if Tempel.Carry.Conn then Tempel.Carry.Conn:Disconnect() end
+    Tempel.Carry.Conn, Tempel.Carry.Target = nil, nil
+    if msg then toast(msg) end
+end
+Tempel.StartCarry = function(player)
+    Tempel.StopCarry()
+    Tempel.Carry.Target = player
+    local t0 = os.clock()
+    Tempel.Carry.Conn = RunService.RenderStepped:Connect(function()
+        local th = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        local me = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+        if player.Parent ~= Players or not (th and me) then
+            Tempel.StopCarry("Gendongan berhenti (pemain hilang)")
+            return
+        end
+        local t = os.clock() - t0
+        local v = me.AssemblyLinearVelocity
+        local spd = Vector3.new(v.X, 0, v.Z).Magnitude
+        local walkAmt = math.min(spd / 16, 1)
+        local bob = math.sin(t * 2) * 0.04 + math.abs(math.sin(t * math.clamp(spd, 0, 24) * 0.6)) * 0.12 * walkAmt
+        th.CFrame = me.CFrame * CFrame.new(0, 1.0 + bob, 0.9) * CFrame.Angles(math.rad(-12), 0, 0)
+        th.AssemblyLinearVelocity = Vector3.zero
+        th.AssemblyAngularVelocity = Vector3.zero
+    end)
+    toast("Menggendong " .. player.Name .. "  (terlihat di layarmu saja)")
+end
+
 updateTempelUI = function()
     local ui = tempelUI
     if not (ui.status and ui.status.Parent) then return end
@@ -3174,6 +3334,10 @@ local function tempelTab()
         Tempel.AnimOn = not Tempel.AnimOn
         if not Tempel.AnimOn then Tempel.StopAnim() end
     end)
+    toggleButton("⚡  Anti delay (prediksi gerak)", function() return Tempel.Predict end, function()
+        Tempel.Predict = not Tempel.Predict
+    end)
+    slider("Kekuatan prediksi delay", 0, 2, Tempel.PredictMul, 0.1, function(v) Tempel.PredictMul = v end, "%.1f")
 
     -- kartu status
     local f = Instance.new("Frame")
@@ -3277,6 +3441,15 @@ local function tempelTab()
         end
     end
     if not any then label("Belum ada pemain lain di server.") end
+
+    label("🤲 GENDONG ORANG  (terlihat di layarmu saja)")
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LP then
+            button("🤲  Gendong " .. dn(player), function() Tempel.StartCarry(player) end)
+        end
+    end
+    button("⬇  Turunkan gendongan", function() Tempel.StopCarry("Gendongan diturunkan") end)
+
     label("Lepas: tekan lompat / tombol ❌ di layar / tombol ❌ Lepas.")
     updateTempelUI()
 end
