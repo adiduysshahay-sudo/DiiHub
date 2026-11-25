@@ -33,12 +33,12 @@ local AllowedUsernames = {
     "Celvin_tin",
     "Hantu_belau2",
     "adefabian7",
+    "AYELxzy978",
+    "haushh42",
+    "junvy7",
+    "ell4voraa",
     "flesss377",
     "budakkaseppp",
-    "haushh42",
-    "ell4voraa",
-    "junvy7",
-    "AYELxzy978",
 }
 
 local AllowedUserIds = {
@@ -2804,9 +2804,8 @@ Gui.Destroying:Connect(function()
 end)
 LP.CharacterAdded:Connect(function() Move.Base = nil end)
 
-local function moveTab()
-    clearContent()
-    label("SPEED & JUMP")
+local function moveSection()
+    label("⚡ SPEED & JUMP")
     label("Kecepatan lari dan tinggi lompat dalam satu menu. Tetap aktif walau game mereset nilainya.")
     captureMoveBase()
     local hum = myHumanoid()
@@ -2826,19 +2825,19 @@ local function moveTab()
         captureMoveBase()
         Move.Speed, Move.Jump = 16, 50
         applyMove()
-        moveTab()
+        Inv.movementTab()
     end)
     button("Preset Cepat (50 / 100)", function()
         captureMoveBase()
         Move.Speed, Move.Jump = 50, 100
         applyMove()
-        moveTab()
+        Inv.movementTab()
     end)
     button("Preset Super (100 / 200)", function()
         captureMoveBase()
         Move.Speed, Move.Jump = 100, 200
         applyMove()
-        moveTab()
+        Inv.movementTab()
     end)
     button("Reset ke Nilai Asli Game", function()
         local h, b = myHumanoid(), Move.Base
@@ -2847,7 +2846,7 @@ local function moveTab()
             h.WalkSpeed = b.WS
             if b.UJP then h.JumpPower = b.JP else h.JumpHeight = b.JH end
         end
-        moveTab()
+        Inv.movementTab()
     end)
 end
 
@@ -3973,8 +3972,7 @@ Gui.Destroying:Connect(function()
     end
 end)
 
-local function flyTab()
-    clearContent()
+local function flySection()
     label("🕊 FLY & NOCLIP")
     local flyBtn, paintFly = toggleButton("✈  FLY", function() return Fly.Enabled end, function()
         if Fly.Enabled then stopFly() else startFly() end
@@ -4740,286 +4738,6 @@ do
             .. "dikunci server tidak akan bergerak. Kalau Auto TP tidak "
             .. "ketemu, pakai tombol 'Tampilkan SEMUA Seat' di atas untuk "
             .. "cari manual, lalu isi kata kunci sesuai nama yang muncul.")
-    end
-end
-
---====================================
--- DiiUi HUB: GANTI GAMBAR PAPAN / SIGN (client-side cosmetic)
--- Mengganti Decal / Texture / ImageLabel di sekitar supaya terlihat
--- berbeda HANYA di layarmu. Pemain lain tetap melihat gambar aslinya.
--- V2: preview gambar kecil + daftar favorit Asset ID (selama sesi ini).
---====================================
-local signTab
-do
-    local Sign = {
-        Radius = 60,
-        Saved = setmetatable({}, {__mode = "k"}),
-        Selected = nil,
-        Favorites = {}, -- {uri=..., label=...}
-    }
-
-    local function isImageSurface(inst)
-        return inst:IsA("Decal") or inst:IsA("Texture")
-            or inst:IsA("ImageLabel") or inst:IsA("ImageButton")
-    end
-
-    local function getImageProp(inst)
-        if inst:IsA("ImageLabel") or inst:IsA("ImageButton") then return "Image" end
-        return "Texture" -- Decal & Texture pakai properti yang sama
-    end
-
-    local function partPosOf(inst)
-        local p = inst:FindFirstAncestorWhichIsA("BasePart")
-        if p then return p.Position end
-        local m = inst:FindFirstAncestorWhichIsA("Model")
-        if m and m.PrimaryPart then return m.PrimaryPart.Position end
-        if m then
-            local ok, cf = pcall(function() return m:GetPivot() end)
-            if ok then return cf.Position end
-        end
-        return nil
-    end
-
-    -- terima angka polos, link katalog, rbxassetid:// penuh, atau URL lama roblox.com/asset
-    local function toAssetUri(input)
-        if typeof(input) ~= "string" then return nil end
-        if string.match(input, "^rbxassetid://%d+$") then return input end
-        local num = string.match(input, "(%d+)")
-        if num then return "rbxassetid://" .. num end
-        return nil
-    end
-
-    local function scanSigns()
-        local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-        local list = {}
-        local n = 0
-        for _, d in ipairs(workspace:GetDescendants()) do
-            n += 1
-            if n % 1500 == 0 then task.wait() end
-            if isImageSurface(d) then
-                local pos = partPosOf(d)
-                local dist = (pos and root) and (pos - root.Position).Magnitude or 0
-                if (not root) or (not pos) or dist <= Sign.Radius then
-                    local owner = d:FindFirstAncestorWhichIsA("BasePart")
-                        or d:FindFirstAncestorWhichIsA("Model")
-                    table.insert(list, {
-                        inst = d,
-                        dist = dist,
-                        name = (owner and owner.Name) or d.Name,
-                        preview = toAssetUri(d[getImageProp(d)]),
-                    })
-                end
-            end
-        end
-        table.sort(list, function(a, b) return a.dist < b.dist end)
-        return list
-    end
-
-    local function applyImage(item, uri)
-        local prop = getImageProp(item.inst)
-        if Sign.Saved[item.inst] == nil then
-            Sign.Saved[item.inst] = item.inst[prop]
-        end
-        return pcall(function() item.inst[prop] = uri end)
-    end
-
-    local function revertAll()
-        local n = 0
-        for inst, orig in pairs(Sign.Saved) do
-            if inst.Parent then
-                pcall(function() inst[getImageProp(inst)] = orig end)
-                n += 1
-            end
-            Sign.Saved[inst] = nil
-        end
-        return n
-    end
-
-    Gui.Destroying:Connect(function() pcall(revertAll) end)
-
-    -- kartu kecil dengan thumbnail gambar, dipakai untuk daftar scan & favorit
-    local function imageCard(opts)
-        -- opts: { preview, title, subtitle, selected, onClick, onRemove }
-        local card = Instance.new("TextButton")
-        card.Size = UDim2.new(1, -5, 0, 54)
-        card.BackgroundColor3 = opts.selected and PURPLE or CARD
-        card.Text = ""
-        card.AutoButtonColor = true
-        card.Parent = Content
-        Instance.new("UICorner", card).CornerRadius = UDim.new(0, 9)
-
-        local img = Instance.new("ImageLabel")
-        img.Size = UDim2.fromOffset(42, 42)
-        img.Position = UDim2.fromOffset(8, 6)
-        img.BackgroundColor3 = DARK
-        img.BorderSizePixel = 0
-        img.ScaleType = Enum.ScaleType.Fit
-        if opts.preview then img.Image = opts.preview end
-        img.Parent = card
-        Instance.new("UICorner", img).CornerRadius = UDim.new(0, 8)
-
-        local nm = Instance.new("TextLabel")
-        nm.Size = UDim2.new(1, opts.onRemove and -130 or -66, 0, 24)
-        nm.Position = UDim2.fromOffset(58, 5)
-        nm.BackgroundTransparency = 1
-        nm.Text = opts.title
-        nm.TextColor3 = WHITE
-        nm.Font = Enum.Font.GothamBold
-        nm.TextSize = 13
-        nm.TextXAlignment = Enum.TextXAlignment.Left
-        nm.TextTruncate = Enum.TextTruncate.AtEnd
-        nm.Parent = card
-
-        local sub = Instance.new("TextLabel")
-        sub.Size = UDim2.new(1, opts.onRemove and -130 or -66, 0, 18)
-        sub.Position = UDim2.fromOffset(58, 29)
-        sub.BackgroundTransparency = 1
-        sub.Text = opts.subtitle or ""
-        sub.TextColor3 = GREY
-        sub.Font = Enum.Font.Gotham
-        sub.TextSize = 11
-        sub.TextXAlignment = Enum.TextXAlignment.Left
-        sub.Parent = card
-
-        if opts.onClick then
-            card.MouseButton1Click:Connect(opts.onClick)
-        end
-
-        if opts.onRemove then
-            local rm = Instance.new("TextButton")
-            rm.Size = UDim2.fromOffset(60, 34)
-            rm.Position = UDim2.new(1, -68, 0.5, -17)
-            rm.BackgroundColor3 = Color3.fromRGB(190, 50, 80)
-            rm.Text = "❌ Hapus"
-            rm.TextColor3 = WHITE
-            rm.Font = Enum.Font.GothamBold
-            rm.TextSize = 12
-            rm.Parent = card
-            Instance.new("UICorner", rm).CornerRadius = UDim.new(0, 8)
-            rm.MouseButton1Click:Connect(function()
-                opts.onRemove()
-            end)
-        end
-
-        return card
-    end
-
-    signTab = function()
-        clearContent()
-        label("🖼 GANTI GAMBAR PAPAN / SIGN")
-        label("Hanya tampil di layarmu sendiri. Orang lain tetap lihat gambar asli.")
-
-        -- status target yang sedang dipilih
-        if Sign.Selected and Sign.Selected.inst.Parent then
-            label("🎯 Target dipilih: " .. Sign.Selected.name
-                .. "  (tap papan lain untuk ganti target)")
-        else
-            Sign.Selected = nil
-            label("Belum ada target dipilih. Tap salah satu papan di bawah dulu.")
-        end
-
-        local idBox = textbox("Image Asset ID baru (angka / rbxassetid://...)")
-        button("✅  Terapkan ke Target", function()
-            if not Sign.Selected or not Sign.Selected.inst.Parent then
-                toast("Pilih target papan dulu")
-                return
-            end
-            local uri = toAssetUri(idBox.Text)
-            if not uri then toast("Isi Image Asset ID yang valid dulu") return end
-            local ok = applyImage(Sign.Selected, uri)
-            if ok then
-                toast("✅ Gambar " .. Sign.Selected.name .. " diganti")
-                signTab()
-            else
-                toast("Gagal mengganti (properti terkunci?)")
-            end
-        end)
-        button("⭐  Simpan ID di atas sebagai Favorit", function()
-            local uri = toAssetUri(idBox.Text)
-            if not uri then toast("Isi Image Asset ID yang valid dulu") return end
-            for _, f in ipairs(Sign.Favorites) do
-                if f.uri == uri then toast("Sudah ada di favorit") return end
-            end
-            table.insert(Sign.Favorites, 1, {uri = uri, label = idBox.Text})
-            toast("⭐ Disimpan ke favorit")
-            signTab()
-        end)
-
-        slider("Radius pencarian (stud)", 10, 300, Sign.Radius, 10, function(v)
-            Sign.Radius = v
-        end)
-
-        -- FAVORIT
-        if #Sign.Favorites > 0 then
-            label("⭐ FAVORIT  (tap = langsung terapkan ke target)")
-            for i, fav in ipairs(Sign.Favorites) do
-                imageCard({
-                    preview = fav.uri,
-                    title = fav.label,
-                    subtitle = "tap untuk pakai di target",
-                    onClick = function()
-                        if not Sign.Selected or not Sign.Selected.inst.Parent then
-                            toast("Pilih target papan dulu")
-                            return
-                        end
-                        local ok = applyImage(Sign.Selected, fav.uri)
-                        if ok then
-                            toast("✅ Diterapkan dari favorit")
-                            signTab()
-                        else
-                            toast("Gagal mengganti (properti terkunci?)")
-                        end
-                    end,
-                    onRemove = function()
-                        table.remove(Sign.Favorites, i)
-                        signTab()
-                    end,
-                })
-            end
-        end
-
-        -- DAFTAR GAMBAR DI SEKITAR
-        label("GAMBAR DI SEKITAR  (tap = pilih sebagai target)")
-        local status = label("Memindai gambar di sekitar...")
-        local found = scanSigns()
-        if ActiveTab ~= signTab or not status.Parent then return end
-
-        if #found == 0 then
-            status.Text = "❌ Tidak ada Decal/Texture/ImageLabel dalam radius ini.\n"
-                .. "Perbesar radius di atas atau jalan mendekat ke papannya, lalu pindai ulang."
-        else
-            status.Text = string.format("✅ Ditemukan %d gambar (terdekat di atas)", #found)
-            for i, item in ipairs(found) do
-                if i > 20 then break end
-                local edited = Sign.Saved[item.inst] ~= nil
-                local isSel = Sign.Selected and Sign.Selected.inst == item.inst
-                imageCard({
-                    preview = item.preview,
-                    title = (edited and "✅ " or "") .. item.name,
-                    subtitle = string.format("%d stud%s", math.floor(item.dist),
-                        isSel and "  •  target sekarang" or ""),
-                    selected = isSel,
-                    onClick = function()
-                        Sign.Selected = item
-                        signTab()
-                    end,
-                })
-            end
-        end
-
-        button("🔍  Pindai ulang", function() signTab() end)
-        button("🔙  Kembalikan SEMUA ke gambar asli", function()
-            local n = revertAll()
-            toast(n > 0 and ("Dikembalikan " .. n .. " gambar") or "Belum ada yang diganti")
-            signTab()
-        end)
-
-        label("Catatan: pakai Asset ID gambar milikmu sendiri (sudah di-upload "
-            .. "ke akun Robloxmu sebagai Decal/Image) supaya tidak kena blokir "
-            .. "moderasi konten. Favorit hanya tersimpan selama sesi/server ini "
-            .. "berjalan (hilang kalau script dijalankan ulang). Beberapa "
-            .. "Decal/Texture dikunci server dan tidak bisa diubah dari client — "
-            .. "kalau gagal, biasanya itu sebabnya.")
     end
 end
 
@@ -5810,12 +5528,21 @@ do
 end
 
 --====================================
--- TELEPORT TEMPAT (cari otomatis di map + lokasi yang bisa kamu simpan sendiri)
+-- TELEPORT TEMPAT
+-- Cara kerja baru (lebih akurat):
+--  1. Lokasi yang kamu SIMPAN = koordinat pasti (disimpan per-map/PlaceId).
+--  2. Kalau belum disimpan, ketuk nama -> script mencari objek asli di map
+--     dan menampilkan DAFTAR HASIL (nama asli + jarak). Kamu pilih yang benar,
+--     lalu otomatis tersimpan ke slot itu, jadi berikutnya langsung pas.
+--  3. Kotak CARI: ketik nama objek apa saja di map, pilih hasilnya.
 --====================================
 do
     local HttpService = game:GetService("HttpService")
-    local FILE = "DiiUi_TeleportSpots.json"
-    local S = {Saved = {}, SaveMode = false, Cycle = {}, Msg = "Ketuk lokasi untuk teleport."}
+    -- file per-map supaya koordinat map lain tidak ikut tercampur
+    local FILE = "DiiUi_TeleportSpots_" .. tostring(game.PlaceId) .. ".json"
+    local MODES = {"go", "save", "del"}
+    local S = {Saved = {}, Mode = 1, Msg = "Ketuk lokasi untuk teleport.", Pick = nil}
+    local MAX_RESULTS = 25
 
     pcall(function()
         if isfile and readfile and isfile(FILE) then
@@ -5829,7 +5556,7 @@ do
         end)
     end
 
-    -- kw = kata kunci nama objek di map; pick = urutan hasil yang dipakai
+    -- kw = kata kunci nama objek di map (dipakai untuk mencari kandidat)
     local PLACES = {
         {name = "Piano Konser", kw = {"piano"}},
         {name = "Tempat Nonton", kw = {"nonton", "theater", "theatre", "cinema", "bioskop"}},
@@ -5846,10 +5573,10 @@ do
         {name = "Hutan Studio", kw = {"studio"}},
         {name = "Taman Bermain", kw = {"playground", "taman bermain", "tamanbermain"}},
         {name = "Labirin", kw = {"labirin", "maze"}},
-        {name = "Spawn 1", spawn = true, pick = 1},
-        {name = "Spawn 2", spawn = true, pick = 2},
-        {name = "Isolasi Diri 1", kw = {"isolasi", "isolation"}, pick = 1},
-        {name = "Isolasi Diri 2", kw = {"isolasi", "isolation"}, pick = 2},
+        {name = "Spawn 1", spawn = true},
+        {name = "Spawn 2", spawn = true},
+        {name = "Isolasi Diri 1", kw = {"isolasi", "isolation"}},
+        {name = "Isolasi Diri 2", kw = {"isolasi", "isolation"}},
         {name = "Carriage", kw = {"carriage"}},
         {name = "Leaderboard", kw = {"leaderboard"}},
         {name = "Market Stall", kw = {"market", "stall"}},
@@ -5865,47 +5592,77 @@ do
         return false
     end
 
-    local function findMatches(entry)
-        local list = {}
-        if entry.spawn then
-            for _, d in ipairs(workspace:GetDescendants()) do
-                if d:IsA("SpawnLocation") then list[#list + 1] = d end
-            end
-            return list
+    local function myPos()
+        local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+        return hrp and hrp.Position
+    end
+
+    local function centerOf(inst)
+        if inst:IsA("Model") then
+            local ok, cf = pcall(function() return (inst:GetBoundingBox()) end)
+            if ok and cf then return cf.Position end
+            return inst:GetPivot().Position
         end
-        local matched, set = {}, {}
+        return inst.Position
+    end
+
+    local function sizeOf(inst)
+        if inst:IsA("Model") then
+            local ok, _, size = pcall(function() return inst:GetBoundingBox() end)
+            if ok and size then return size end
+            return Vector3.new(4, 4, 4)
+        end
+        return inst.Size
+    end
+
+    -- cari kandidat; hasil diurutkan dari yang terdekat denganmu
+    local function findMatches(kw, spawnOnly)
+        local found, set = {}, {}
         for _, d in ipairs(workspace:GetDescendants()) do
-            if d:IsA("Model") or d:IsA("BasePart") then
+            if spawnOnly then
+                if d:IsA("SpawnLocation") then found[#found + 1] = d; set[d] = true end
+            elseif d:IsA("Model") or d:IsA("BasePart") then
                 local n = d.Name:lower()
-                for _, k in ipairs(entry.kw) do
+                for _, k in ipairs(kw) do
                     if n:find(k, 1, true) then
-                        if not inCharacter(d) then
-                            matched[#matched + 1] = d
-                            set[d] = true
-                        end
+                        if not inCharacter(d) then found[#found + 1] = d; set[d] = true end
                         break
                     end
                 end
             end
         end
-        for _, d in ipairs(matched) do
-            local skip = false
-            local p = d.Parent
+        -- buang objek yang induknya sudah masuk hasil (hindari duplikat model + isinya)
+        local list = {}
+        for _, d in ipairs(found) do
+            local skip, p = false, d.Parent
             while p and p ~= workspace do
                 if set[p] then skip = true break end
                 p = p.Parent
             end
             if not skip then list[#list + 1] = d end
         end
-        return list
+        local me = myPos()
+        local dist = {}
+        for _, d in ipairs(list) do
+            local ok, c = pcall(centerOf, d)
+            dist[d] = (ok and me) and (c - me).Magnitude or math.huge
+        end
+        table.sort(list, function(a, b) return dist[a] < dist[b] end)
+        while #list > MAX_RESULTS do table.remove(list) end
+        return list, dist
     end
 
-    local function spotPosition(inst)
-        if inst:IsA("Model") then
-            local cf, size = inst:GetBoundingBox()
-            return cf.Position + Vector3.new(0, size.Y / 2 + 4, 0)
-        end
-        return inst.Position + Vector3.new(0, inst.Size.Y / 2 + 4, 0)
+    -- titik mendarat: tepat di tengah objek, turun ke lantai di bawahnya
+    local function landingFor(inst)
+        local c = centerOf(inst)
+        local size = sizeOf(inst)
+        if inst:IsA("SpawnLocation") then return c + Vector3.new(0, size.Y / 2 + 4, 0) end
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Exclude
+        params.FilterDescendantsInstances = {LP.Character}
+        local hit = workspace:Raycast(c + Vector3.new(0, 1, 0), Vector3.new(0, -(size.Y / 2 + 60), 0), params)
+        if hit then return hit.Position + Vector3.new(0, 3.5, 0) end
+        return c + Vector3.new(0, 3.5, 0)
     end
 
     local function teleportTo(pos)
@@ -5919,7 +5676,7 @@ do
 
     Inv.teleportTab = function()
         clearContent()
-        label("📍 TELEPORT TEMPAT")
+        label("🏠 TELEPORT TEMPAT")
         local status = label(S.Msg)
         status.Font = Enum.Font.Gotham
         status.TextSize = 12
@@ -5929,18 +5686,64 @@ do
             if status and status.Parent then status.Text = t end
         end
 
-        local modeBtn
-        modeBtn = button("", nil)
-        local function refreshMode()
-            modeBtn.Text = "Mode: " .. (S.SaveMode and "💾 SIMPAN posisiku ke lokasi" or "🚀 PERGI (teleport)") .. "  (ketuk untuk ganti)"
+        local function modeText()
+            local m = MODES[S.Mode]
+            if m == "go" then return "Mode: 🚀 PERGI (teleport)" end
+            if m == "save" then return "Mode: 💾 SIMPAN posisiku ke lokasi" end
+            return "Mode: 🗑 HAPUS lokasi tersimpan"
         end
-        refreshMode()
-        guardedClick(modeBtn, Content, function()
-            S.SaveMode = not S.SaveMode
-            refreshMode()
-            setStatus(S.SaveMode and "Berdiri di lokasi yang diinginkan, lalu ketuk namanya."
-                or "Ketuk lokasi untuk teleport.")
+        button(modeText() .. "  (ketuk untuk ganti)", function()
+            S.Mode = S.Mode % #MODES + 1
+            local m = MODES[S.Mode]
+            S.Msg = (m == "go" and "Ketuk lokasi untuk teleport.")
+                or (m == "save" and "Berdiri di lokasi yang diinginkan, lalu ketuk namanya.")
+                or "Ketuk nama lokasi untuk menghapus simpanannya."
+            Inv.teleportTab()
         end)
+
+        -- CARI BEBAS
+        label("🔎 CARI OBJEK DI MAP")
+        local searchBox = textbox("Ketik nama objek (mis. piano, bridge)")
+        button("🔎  Cari", function()
+            local q = ((searchBox.Text or ""):gsub("^%s+", ""):gsub("%s+$", "")):lower()
+            if q == "" then setStatus("Isi kata kunci dulu.") return end
+            local list, dist = findMatches({q}, false)
+            if #list == 0 then setStatus("Tidak ada objek bernama '" .. q .. "' di map.") return end
+            S.Pick = {title = "Hasil cari: " .. q, list = list, dist = dist}
+            S.Msg = #list .. " hasil. Pilih yang benar."
+            Inv.teleportTab()
+        end)
+
+        -- HASIL KANDIDAT (pilih yang benar)
+        if S.Pick then
+            label("✅ " .. S.Pick.title)
+            for _, m in ipairs(S.Pick.list) do
+                if m.Parent then
+                    local parentName = (m.Parent ~= workspace) and ("  ‹" .. m.Parent.Name .. "›") or ""
+                    local d = S.Pick.dist[m]
+                    local dtxt = (d and d < math.huge) and ("  •  " .. math.floor(d) .. " studs") or ""
+                    button("📍 " .. m.Name .. parentName .. dtxt, function()
+                        local pos = landingFor(m)
+                        if teleportTo(pos) then
+                            if S.Pick and S.Pick.slot then
+                                -- simpan koordinat pasti (go() menambah +3 di Y, jadi kurangi 3 di sini)
+                                S.Saved[S.Pick.slot] = {pos.X, pos.Y - 3, pos.Z}
+                                persist()
+                                setStatus("Teleport ke " .. m.Name .. " dan disimpan ke '" .. S.Pick.slot .. "'.")
+                            else
+                                setStatus("Teleport ke " .. m.Name)
+                            end
+                        else
+                            setStatus("Karakter belum tersedia.")
+                        end
+                    end)
+                end
+            end
+            button("✖  Tutup hasil", function()
+                S.Pick = nil
+                Inv.teleportTab()
+            end)
+        end
 
         local function go(entry)
             local name = entry.name
@@ -5952,38 +5755,40 @@ do
                 return
             end
             setStatus("Mencari " .. name .. " di map...")
-            local matches = findMatches(entry)
-            if #matches == 0 then
-                setStatus("'" .. name .. "' belum ketemu di map. Berdiri di sana, ganti mode ke SIMPAN, lalu ketuk namanya.")
+            local list, dist = findMatches(entry.kw or {}, entry.spawn)
+            if #list == 0 then
+                setStatus("'" .. name .. "' tidak ketemu. Berdiri di sana, ganti mode ke SIMPAN, lalu ketuk namanya. Atau pakai kotak CARI.")
                 return
             end
-            local idx = entry.pick
-            if not idx then
-                idx = (S.Cycle[name] or 0) % #matches + 1
-                S.Cycle[name] = idx
-            end
-            local target = matches[idx] or matches[1]
-            if teleportTo(spotPosition(target)) then
-                setStatus(("Teleport ke %s (%d dari %d hasil)"):format(name, math.min(idx, #matches), #matches))
-            end
+            S.Pick = {title = "Pilih yang benar untuk: " .. name, list = list, dist = dist, slot = name}
+            S.Msg = #list .. " kandidat untuk '" .. name .. "'. Pilih yang benar (otomatis tersimpan)."
+            Inv.teleportTab()
         end
 
-        local function saveHere(name, btn, prefix)
-            local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-            if not hrp then setStatus("Karakter belum tersedia.") return end
-            local p = hrp.Position
+        local function saveHere(name)
+            local p = myPos()
+            if not p then setStatus("Karakter belum tersedia.") return false end
             S.Saved[name] = {p.X, p.Y, p.Z}
             persist()
-            if btn then btn.Text = "✅ " .. prefix end
             setStatus("Lokasi '" .. name .. "' disimpan.")
+            return true
         end
 
+        label("📌 DAFTAR LOKASI")
         for i, entry in ipairs(PLACES) do
             local text = i .. ". " .. entry.name
-            local b
-            b = button((S.Saved[entry.name] and "✅ " or "📍 ") .. text, nil)
-            guardedClick(b, Content, function()
-                if S.SaveMode then saveHere(entry.name, b, text) else go(entry) end
+            button((S.Saved[entry.name] and "✅ " or "📍 ") .. text, function()
+                local m = MODES[S.Mode]
+                if m == "save" then
+                    if saveHere(entry.name) then Inv.teleportTab() end
+                elseif m == "del" then
+                    S.Saved[entry.name] = nil
+                    persist()
+                    setStatus("Simpanan '" .. entry.name .. "' dihapus.")
+                    Inv.teleportTab()
+                else
+                    go(entry)
+                end
             end)
         end
 
@@ -5997,10 +5802,15 @@ do
         table.sort(custom)
         if #custom > 0 then label("⭐ LOKASI BUATANMU") end
         for _, name in ipairs(custom) do
-            local b = button("⭐ " .. name .. "   (ketuk = pergi, tahan mode simpan = timpa)", nil)
-            guardedClick(b, Content, function()
-                if S.SaveMode then
-                    saveHere(name, nil, name)
+            button("⭐ " .. name, function()
+                local m = MODES[S.Mode]
+                if m == "save" then
+                    if saveHere(name) then Inv.teleportTab() end
+                elseif m == "del" then
+                    S.Saved[name] = nil
+                    persist()
+                    setStatus("Lokasi '" .. name .. "' dihapus.")
+                    Inv.teleportTab()
                 else
                     local sv = S.Saved[name]
                     if sv and teleportTo(Vector3.new(sv[1], sv[2] + 3, sv[3])) then
@@ -6013,167 +5823,16 @@ do
         label("➕ TAMBAH LOKASI BARU")
         local nameBox = textbox("Nama lokasi baru")
         button("💾  Simpan posisiku sebagai lokasi baru", function()
-            local name = (nameBox.Text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+            local name = ((nameBox.Text or ""):gsub("^%s+", ""):gsub("%s+$", ""))
             if name == "" then setStatus("Isi nama lokasinya dulu.") return end
-            saveHere(name, nil, name)
-            Inv.teleportTab()
+            if saveHere(name) then Inv.teleportTab() end
         end)
         button("🗑  Hapus semua lokasi tersimpan", function()
             S.Saved = {}
             persist()
-            setStatus("Semua lokasi tersimpan dihapus.")
+            S.Msg = "Semua lokasi tersimpan dihapus."
             Inv.teleportTab()
         end)
-    end
-end
-
---====================================
--- DECAL (daftar ID gambar; dipasang ke permukaan yang kamu bidik)
--- Catatan: decal dibuat dari sisi client, jadi hanya terlihat di layarmu.
---====================================
-do
-    local HttpService = game:GetService("HttpService")
-    local FILE = "DiiUi_Decals.json"
-    local D = {List = {}, Size = 8, Msg = "Tambah ID decal, lalu bidik permukaan dan ketuk 📌."}
-    local folder
-
-    pcall(function()
-        if isfile and readfile and isfile(FILE) then
-            local data = HttpService:JSONDecode(readfile(FILE))
-            if type(data) == "table" then D.List = data end
-        end
-    end)
-    local function persist()
-        pcall(function()
-            if writefile then writefile(FILE, HttpService:JSONEncode(D.List)) end
-        end)
-    end
-
-    local function clearDecals()
-        if folder then pcall(function() folder:Destroy() end) folder = nil end
-    end
-    Gui.Destroying:Connect(clearDecals)
-
-    local function placeDecal(id, setStatus)
-        local cam = workspace.CurrentCamera
-        if not cam then return end
-        local params = RaycastParams.new()
-        params.FilterType = Enum.RaycastFilterType.Exclude
-        local ignore = {}
-        if LP.Character then ignore[#ignore + 1] = LP.Character end
-        if folder then ignore[#ignore + 1] = folder end
-        params.FilterDescendantsInstances = ignore
-        local res = workspace:Raycast(cam.CFrame.Position, cam.CFrame.LookVector * 300, params)
-        if not res then
-            setStatus("Arahkan kamera (titik tengah layar) ke dinding atau permukaan dulu.")
-            return
-        end
-        if not folder or not folder.Parent then
-            folder = Instance.new("Folder")
-            folder.Name = "DiiUi_Decals"
-            folder.Parent = workspace
-        end
-        local part = Instance.new("Part")
-        part.Anchored = true
-        part.CanCollide = false
-        part.CanQuery = false
-        part.CanTouch = false
-        part.CastShadow = false
-        part.Transparency = 1
-        part.Size = Vector3.new(D.Size, D.Size, 0.05)
-        part.CFrame = CFrame.lookAt(res.Position + res.Normal * 0.03, res.Position + res.Normal * 2)
-        local decal = Instance.new("Decal")
-        decal.Face = Enum.NormalId.Front
-        decal.Texture = "rbxassetid://" .. id
-        decal.Parent = part
-        part.Parent = folder
-        setStatus("Decal " .. id .. " dipasang.")
-    end
-
-    Inv.decalTab = function()
-        clearContent()
-        label("🖼 DECAL LIST")
-        local status = label(D.Msg)
-        status.Font = Enum.Font.Gotham
-        status.TextSize = 12
-        status.TextColor3 = GREY
-        local function setStatus(t)
-            D.Msg = t
-            if status and status.Parent then status.Text = t end
-        end
-
-        local box = textbox("Tempel ID decal / link gambar Roblox")
-        button("➕  Tambah ke daftar", function()
-            local id = tostring(box.Text or ""):match("%d%d%d%d%d+")
-            if not id then setStatus("ID tidak valid. Tempel angka ID decal-nya.") return end
-            for _, v in ipairs(D.List) do
-                if v == id then setStatus("ID itu sudah ada di daftar.") return end
-            end
-            table.insert(D.List, id)
-            persist()
-            Inv.decalTab()
-        end)
-        slider("Ukuran decal (studs)", 1, 40, D.Size, 1, function(v) D.Size = v end, "%d")
-        button("🧹  Hapus semua decal yang terpasang", function()
-            clearDecals()
-            setStatus("Semua decal yang terpasang dihapus.")
-        end)
-
-        for i, id in ipairs(D.List) do
-            local row = Instance.new("Frame")
-            row.Size = UDim2.new(1, -5, 0, 54)
-            row.BackgroundColor3 = Color3.fromRGB(65, 39, 105)
-            row.Parent = Content
-            Instance.new("UICorner", row).CornerRadius = UDim.new(0, 7)
-
-            local img = Instance.new("ImageLabel")
-            img.Size = UDim2.fromOffset(44, 44)
-            img.Position = UDim2.fromOffset(5, 5)
-            img.BackgroundTransparency = 1
-            img.Image = string.format("rbxthumb://type=Asset&id=%s&w=150&h=150", id)
-            img.Parent = row
-
-            local idLbl = Instance.new("TextLabel")
-            idLbl.Position = UDim2.fromOffset(56, 0)
-            idLbl.Size = UDim2.new(1, -150, 1, 0)
-            idLbl.BackgroundTransparency = 1
-            idLbl.Text = id
-            idLbl.TextColor3 = WHITE
-            idLbl.Font = Enum.Font.GothamSemibold
-            idLbl.TextSize = 13
-            idLbl.TextXAlignment = Enum.TextXAlignment.Left
-            idLbl.Parent = row
-
-            local use = Instance.new("TextButton")
-            use.Size = UDim2.fromOffset(52, 34)
-            use.Position = UDim2.new(1, -96, 0.5, -17)
-            use.BackgroundColor3 = Color3.fromRGB(0, 200, 170)
-            use.Text = "📌"
-            use.TextSize = 16
-            use.Font = Enum.Font.GothamBold
-            use.TextColor3 = Color3.new(0, 0, 0)
-            use.Parent = row
-            Instance.new("UICorner", use).CornerRadius = UDim.new(0, 6)
-            guardedClick(use, Content, function() placeDecal(id, setStatus) end)
-
-            local del = Instance.new("TextButton")
-            del.Size = UDim2.fromOffset(36, 34)
-            del.Position = UDim2.new(1, -40, 0.5, -17)
-            del.BackgroundColor3 = Color3.fromRGB(170, 60, 60)
-            del.Text = "🗑"
-            del.TextSize = 14
-            del.Font = Enum.Font.GothamBold
-            del.TextColor3 = WHITE
-            del.Parent = row
-            Instance.new("UICorner", del).CornerRadius = UDim.new(0, 6)
-            guardedClick(del, Content, function()
-                table.remove(D.List, i)
-                persist()
-                Inv.decalTab()
-            end)
-        end
-        if #D.List == 0 then label("Belum ada decal. Tambahkan ID di atas.") end
-        label("Decal hanya terlihat di layarmu (dibuat dari sisi client).")
     end
 end
 
@@ -6231,8 +5890,7 @@ do
     LP.CharacterAdded:Connect(function() if T.On then stopTornado() end end)
     Gui.Destroying:Connect(stopTornado)
 
-    Inv.tornadoTab = function()
-        clearContent()
+    Inv.tornadoSection = function()
         label("🌪 TORNADO SPIN")
         label("Karakter berputar dengan efek debu pusaran. Hanya memutar dirimu sendiri.")
         toggleButton("🌪  Tornado Spin", function() return T.On end, function()
@@ -6246,30 +5904,37 @@ do
     end
 end
 
+
+--====================================
+-- MENU GABUNGAN: Fly, NoClip, Speed & Jump, Tornado Spin
+--====================================
+Inv.movementTab = function()
+    clearContent()
+    flySection()
+    moveSection()
+    Inv.tornadoSection()
+end
+
 -- CREATE TABS
 makeTab("⌂  Home", homeTab)
 makeTab("☀  Graphics", graphicsTab)
 makeTab("📍  Teleport", teleportTab)
+makeTab("🏠  Teleport Tempat", Inv.teleportTab)
 makeTab("◉  Spectator", spectatorTab)
 makeTab("👻  Invisible", Inv.tab)
 makeTab("💎  Limited Items", limitedItemTab)
 makeTab("◎  Free Cam", freeCamTab)
 makeTab("🎬  Cinematic Cam", Inv.cinemaTab)
-makeTab("🌐  Server", Inv.serverTab)
-makeTab("📍  Teleport Tempat", Inv.teleportTab)
-makeTab("🖼  Decal", Inv.decalTab)
-makeTab("🌪  Tornado Spin", Inv.tornadoTab)
-makeTab("⚡  Speed & Jump", moveTab)
-makeTab("🕊  Fly & NoClip", flyTab)
+makeTab("🕊  Fly / NoClip / Speed / Tornado", Inv.movementTab)
 makeTab("🛡  Anti Lag / Crash", antiLagTab)
 makeTab("🛒  Grobak", cartTab)
-makeTab("🖼  Ganti Gambar", signTab)
 makeTab("🎒  Tempel / Backpack", tempelTab)
 makeTab("👤  Salin Avatar", avatarTab)
 makeTab("🪙  Coin Hutan", coinHutanTab)
 makeTab("🎭  Emote", Inv.emoteTab)
 makeTab("🏃  Animasi", Inv.animTab)
+makeTab("🌐  Server", Inv.serverTab)
 
 homeTab()
 
-print("DiiUi HUB V3.6 loaded successfully!")
+print("DiiUi HUB V3.7 loaded successfully!")
