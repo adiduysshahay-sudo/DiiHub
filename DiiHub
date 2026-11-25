@@ -33,12 +33,13 @@ local AllowedUsernames = {
     "Celvin_tin",
     "Hantu_belau2",
     "adefabian7",
-    "AYELxzy978",
-    "haushh42",
     "junvy7",
     "ell4voraa",
-    "flesss377",
     "budakkaseppp",
+    "flesss377",
+    "haushh42",
+    "AYELxzy978",
+    "bbymloo",
 }
 
 local AllowedUserIds = {
@@ -5915,6 +5916,111 @@ Inv.movementTab = function()
     Inv.tornadoSection()
 end
 
+--====================================
+-- ANTI AFK & ANTI KICK (kode terbuka, bisa dibaca semua)
+--  - Anti AFK : mencegah dikick karena idle 20 menit.
+--  - Anti Kick: memblokir pemanggilan LocalPlayer:Kick() dari script game
+--               (client-side). Kick dari SERVER tetap tidak bisa dicegah.
+--  - Anti VC Ban tidak ada: ban voice chat ditentukan server Roblox.
+--====================================
+do
+    local VirtualUser = game:GetService("VirtualUser")
+    local A = {AFK = false, Kick = false, KickHooked = false, Blocked = 0}
+
+    LP.Idled:Connect(function()
+        if not A.AFK then return end
+        pcall(function()
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new())
+        end)
+    end)
+
+    local function hookKick()
+        if A.KickHooked then return true end
+        if not (hookmetamethod and getnamecallmethod) then return false end
+        local ok = pcall(function()
+            local old
+            old = hookmetamethod(game, "__namecall", function(self, ...)
+                if A.Kick and self == LP and getnamecallmethod() == "Kick" then
+                    A.Blocked = A.Blocked + 1
+                    return nil
+                end
+                return old(self, ...)
+            end)
+        end)
+        A.KickHooked = ok
+        return ok
+    end
+
+    -- MIC GUARD: paksa mikrofon tetap mati (client-side, benar-benar berfungsi
+    -- di game yang memakai AudioDeviceInput). Ini mengurangi risiko dilaporkan
+    -- karena voice chat, tapi BUKAN pencegah ban dari server Roblox.
+    A.Mic = false
+    A.MicCount = 0
+    local micConns = {}
+    local function guardInput(inp)
+        if not inp:IsA("AudioDeviceInput") or micConns[inp] then return end
+        micConns[inp] = inp:GetPropertyChangedSignal("Muted"):Connect(function()
+            if A.Mic and not inp.Muted then inp.Muted = true end
+        end)
+        A.MicCount = A.MicCount + 1
+        if A.Mic then inp.Muted = true end
+    end
+    local function scanMic()
+        for _, d in ipairs(LP:GetDescendants()) do guardInput(d) end
+    end
+    LP.DescendantAdded:Connect(guardInput)
+    scanMic()
+
+    Inv.antiTab = function()
+        clearContent()
+        label("🛡 ANTI AFK & ANTI KICK")
+        local info = label("Anti AFK: cegah kick karena idle. Anti Kick: blokir Kick() dari script game (client-side).")
+        info.Font = Enum.Font.Gotham
+        info.TextSize = 12
+        info.TextColor3 = GREY
+
+        toggleButton("Anti AFK", function() return A.AFK end, function()
+            A.AFK = not A.AFK
+        end)
+
+        local msg
+        toggleButton("Anti Kick", function() return A.Kick end, function()
+            if not A.Kick then
+                if hookKick() then
+                    A.Kick = true
+                else
+                    if msg then msg.Text = "Executor kamu tidak mendukung hookmetamethod, Anti Kick tidak bisa aktif." end
+                end
+            else
+                A.Kick = false
+            end
+        end)
+        msg = label("Kick diblokir: " .. A.Blocked .. "x")
+        msg.Font = Enum.Font.Gotham
+        msg.TextSize = 12
+        msg.TextColor3 = GREY
+
+        local micMsg
+        toggleButton("Mic Guard (mic dipaksa mati)", function() return A.Mic end, function()
+            A.Mic = not A.Mic
+            scanMic()
+            if A.Mic then
+                for inp in pairs(micConns) do if inp.Parent then inp.Muted = true end end
+            end
+            if micMsg then
+                micMsg.Text = A.MicCount > 0
+                    and ("Mic Guard menjaga " .. A.MicCount .. " input mikrofon.")
+                    or "Tidak ada input mikrofon terdeteksi (game ini mungkin tanpa voice chat)."
+            end
+        end)
+        micMsg = label("Mengurangi risiko dilaporkan lewat voice. Tidak mencegah ban dari server Roblox.")
+        micMsg.Font = Enum.Font.Gotham
+        micMsg.TextSize = 12
+        micMsg.TextColor3 = GREY
+    end
+end
+
 -- CREATE TABS
 makeTab("⌂  Home", homeTab)
 makeTab("☀  Graphics", graphicsTab)
@@ -5927,6 +6033,7 @@ makeTab("◎  Free Cam", freeCamTab)
 makeTab("🎬  Cinematic Cam", Inv.cinemaTab)
 makeTab("🕊  Fly / NoClip / Speed / Tornado", Inv.movementTab)
 makeTab("🛡  Anti Lag / Crash", antiLagTab)
+makeTab("🛡  Anti AFK / Kick / Mic", Inv.antiTab)
 makeTab("🛒  Grobak", cartTab)
 makeTab("🎒  Tempel / Backpack", tempelTab)
 makeTab("👤  Salin Avatar", avatarTab)
