@@ -33,13 +33,12 @@ local AllowedUsernames = {
     "Celvin_tin",
     "Hantu_belau2",
     "adefabian7",
-    "AYELxzy978",
-    "haushh42",
-    "junvy7",
-    "ell4voraa",
-    "flesss377",
     "budakkaseppp",
-
+    "flesss377",
+    "ell4voraa",
+    "junvy7",
+    "haushh42",
+    "AYELxzy978",
 }
 
 local AllowedUserIds = {
@@ -3042,7 +3041,7 @@ end
 -- Tap username -> langsung menempel. Gaya bisa diganti kapan saja saat menempel.
 -- Lepas: lompat, tombol ❌ di layar, atau tombol di menu.
 --====================================
-local Tempel = {Target = nil, StyleIdx = 1, T = 0, Saved = nil, AnimOn = true, Tracks = {}, AnimKey = nil, Predict = true, PredictMul = 1, Vel = nil}
+local Tempel = {Target = nil, StyleIdx = 1, T = 0, Saved = nil, AnimOn = true, Tracks = {}, AnimKey = nil, Predict = true, PredictMul = 1.5, Vel = nil}
 local TempelStyles = {
     {Name = "🎒 Backpack (di punggung)", Fn = function(t) return CFrame.new(0, 0.2, 1.3) end},
     {Name = "🐴 Gendong naik punggung", Fn = function(t) return CFrame.new(0, 1.0, 0.9) * CFrame.Angles(math.rad(-12), 0, 0) end},
@@ -3226,7 +3225,7 @@ local function startTempel(player)
             -- badan ikut miring sedikit sesuai arah/kecepatan target (hidup, bukan patung)
             -- kecepatan target dihaluskan sedikit supaya tidak bergetar
             local rawV = tr.AssemblyLinearVelocity
-            Tempel.Vel = Tempel.Vel and Tempel.Vel:Lerp(rawV, 1 - math.exp(-dt * 18)) or rawV
+            Tempel.Vel = Tempel.Vel and Tempel.Vel:Lerp(rawV, 1 - math.exp(-dt * 45)) or rawV
             local lv = tr.CFrame:VectorToObjectSpace(Tempel.Vel)
             local leanGoal = math.clamp(-lv.Z / 16, -1, 1) * math.rad(8)
             Tempel.Lean += (leanGoal - Tempel.Lean) * (1 - math.exp(-dt * 12))
@@ -3264,13 +3263,21 @@ local function startTempel(player)
                 Tempel.Cur = desired -- terkunci langsung ke target: tidak ada delay
             end
             r.CFrame = Tempel.Cur
-            r.AssemblyLinearVelocity = Vector3.zero
+            r.AssemblyLinearVelocity = (p < 1 and Tempel.From) and Vector3.zero or Tempel.Vel
             r.AssemblyAngularVelocity = Vector3.zero
             Tempel.UpdateAnim(h, tr)
         end
     end
     -- RenderStepped = posisi target paling baru (anti delay); Heartbeat = jaga sinkron fisika
-    if not tempelConn then tempelConn = RunService.RenderStepped:Connect(Tempel.Step) end
+    if not tempelConn then
+        -- 150 = sebelum kamera membaca posisi (kamera ikut mulus), 2000 = pas sebelum frame digambar
+        RunService:BindToRenderStep("DiiUiTempelA", 150, Tempel.Step)
+        RunService:BindToRenderStep("DiiUiTempelB", 2000, Tempel.Step)
+        tempelConn = {Disconnect = function()
+            pcall(function() RunService:UnbindFromRenderStep("DiiUiTempelA") end)
+            pcall(function() RunService:UnbindFromRenderStep("DiiUiTempelB") end)
+        end}
+    end
     if not Tempel.Conn2 then Tempel.Conn2 = RunService.Heartbeat:Connect(Tempel.Step) end
     toast("Menempel ke " .. player.Name .. "  •  gaya bisa diganti di menu")
     if updateTempelUI then updateTempelUI() end
@@ -3341,7 +3348,7 @@ local function tempelTab()
     toggleButton("⚡  Anti delay (prediksi gerak)", function() return Tempel.Predict end, function()
         Tempel.Predict = not Tempel.Predict
     end)
-    slider("Kekuatan prediksi delay", 0, 2, Tempel.PredictMul, 0.1, function(v) Tempel.PredictMul = v end, "%.1f")
+    slider("Kekuatan prediksi delay", 0, 4, Tempel.PredictMul, 0.1, function(v) Tempel.PredictMul = v end, "%.1f")
 
     -- kartu status
     local f = Instance.new("Frame")
@@ -5160,6 +5167,9 @@ Inv.emoteTab, Inv.animTab = (function()
         end)
     end)
 
+    local seen, orderLow, orderHigh = {}, 1000, 1000
+    local curPages, loadingMore, renderId, scrollConn = nil, false, 0, nil
+    local INITIAL_LOAD = 90
     local function clearRows()
         for _, r in ipairs(rows) do
             if r and r.Parent then r:Destroy() end
@@ -5167,11 +5177,24 @@ Inv.emoteTab, Inv.animTab = (function()
         rows = {}
     end
 
-    local function addItems(items)
+    local function addItems(items, prepend)
         local added = 0
-        for _, item in ipairs(items) do
-            if item.ItemType ~= Enum.AvatarItemType.Bundle then
+        local list = items
+        if prepend then
+            list = {}
+            for i = #items, 1, -1 do list[#list + 1] = items[i] end
+        end
+        for _, item in ipairs(list) do
+            if item.ItemType ~= Enum.AvatarItemType.Bundle and not seen[item.Id] then
+                seen[item.Id] = true
                 local b = Instance.new("TextButton")
+                if prepend then
+                    orderLow = orderLow - 1
+                    b.LayoutOrder = orderLow
+                else
+                    orderHigh = orderHigh + 1
+                    b.LayoutOrder = orderHigh
+                end
                 b.Size = UDim2.new(1, -5, 0, 54)
                 b.BackgroundColor3 = Color3.fromRGB(65, 39, 105)
                 b.Text = ""
@@ -5220,21 +5243,52 @@ Inv.emoteTab, Inv.animTab = (function()
         return added
     end
 
-    local function doSearch()
-        searchId = searchId + 1
-        local my = searchId
-        clearRows()
-        setStatus("Mencari...")
-
+    local function makeParams(limit)
         local params = CatalogSearchParams.new()
         params.SearchKeyword = keyword
         params.AssetTypes = {CATS[catIdx][2]}
         params.SortType = SORTS[sortIdx][2]
         params.IncludeOffSale = true
-        params.Limit = 60
+        params.Limit = limit
+        return params
+    end
+
+    local moreBtn
+    local loadMore, updateMoreBtn
+
+    updateMoreBtn = function()
+        if moreBtn and moreBtn.Parent then moreBtn:Destroy() end
+        moreBtn = nil
+        if curPages and not curPages.IsFinished and isActive() then
+            moreBtn = button("⬇  Muat lebih banyak", function() task.spawn(loadMore) end)
+            moreBtn.LayoutOrder = 10000000
+            table.insert(rows, moreBtn)
+        end
+    end
+
+    loadMore = function()
+        if loadingMore or not curPages or curPages.IsFinished then return end
+        loadingMore = true
+        local my = searchId
+        setStatus("Memuat lebih banyak...")
+        local ok = pcall(function() curPages:AdvanceToNextPageAsync() end)
+        if ok and my == searchId and isActive() then
+            local n = addItems(curPages:GetCurrentPage())
+            setStatus("+" .. n .. " item dimuat.")
+            updateMoreBtn()
+        end
+        loadingMore = false
+    end
+
+    local function doSearch()
+        searchId = searchId + 1
+        local my = searchId
+        clearRows()
+        seen, orderLow, orderHigh, curPages, moreBtn = {}, 1000, 1000, nil, nil
+        setStatus("Mencari...")
 
         local ok, pages = pcall(function()
-            return AvatarEditorService:SearchCatalog(params)
+            return AvatarEditorService:SearchCatalog(makeParams(60))
         end)
         if my ~= searchId or not isActive() then return end
         if not ok or not pages then
@@ -5242,8 +5296,9 @@ Inv.emoteTab, Inv.animTab = (function()
             return
         end
 
+        curPages = pages
         local total = addItems(pages:GetCurrentPage())
-        while not pages.IsFinished and total < MAX_RESULTS and my == searchId and isActive() do
+        while not pages.IsFinished and total < INITIAL_LOAD and my == searchId and isActive() do
             setStatus("Memuat hasil... (" .. total .. ")")
             local okNext = pcall(function() pages:AdvanceToNextPageAsync() end)
             if not okNext or my ~= searchId or not isActive() then break end
@@ -5251,8 +5306,20 @@ Inv.emoteTab, Inv.animTab = (function()
         end
 
         if my ~= searchId or not isActive() then return end
+        updateMoreBtn()
         setStatus(total == 0 and "Tidak ada hasil."
-            or (total .. " hasil. Ketuk item untuk memakai."))
+            or (total .. " hasil. Ketuk item untuk memakai. Scroll ke bawah untuk memuat lagi."))
+    end
+
+    -- cek item paling baru; yang belum pernah tampil ditaruh di paling atas
+    local function refreshNewest()
+        local ok, pages = pcall(function()
+            return AvatarEditorService:SearchCatalog(makeParams(60))
+        end)
+        if not ok or not pages or not isActive() then return 0 end
+        local n = addItems(pages:GetCurrentPage(), true)
+        if n > 0 then setStatus("🆕 " .. n .. " item baru ditambahkan di atas.") end
+        return n
     end
 
     local lastMode
@@ -5263,6 +5330,24 @@ Inv.emoteTab, Inv.animTab = (function()
         end
         clearContent()
         rows = {}
+        renderId = renderId + 1
+        local myRender = renderId
+        if scrollConn then scrollConn:Disconnect() scrollConn = nil end
+        pcall(function()
+            scrollConn = Content:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+                if renderId ~= myRender or not isActive() then return end
+                if Content.CanvasPosition.Y + Content.AbsoluteSize.Y >= Content.AbsoluteCanvasSize.Y - 300 then
+                    task.spawn(loadMore)
+                end
+            end)
+        end)
+        task.spawn(function()
+            while renderId == myRender do
+                task.wait(40)
+                if renderId ~= myRender or not isActive() then break end
+                if SORTS[sortIdx][1] == "Terbaru" and not loadingMore then pcall(refreshNewest) end
+            end
+        end)
         label(m == "emote" and "🎭 EMOTE" or "🏃 ANIMASI")
         statusLabel = label(m == "emote"
             and "Ketik nama emote, hasil muncul otomatis."
@@ -5314,6 +5399,12 @@ Inv.emoteTab, Inv.animTab = (function()
         end)
 
         if m == "emote" then
+            button("🆕  Cek emote terbaru sekarang", function()
+                task.spawn(function()
+                    local n = refreshNewest()
+                    if n == 0 then setStatus("Belum ada item baru.") end
+                end)
+            end)
             button("⏹  Stop Emote", stopEmote)
         end
 
@@ -5334,20 +5425,21 @@ do
         Enabled = false, Locked = false, HideUI = false,
         Dist = 9, Height = 1.5, Yaw = 0, FOV = 60,
         Sway = 0, SwaySpeed = 2, Smooth = 10, Follow = 1.5,
-        TargetName = nil, T = 0, Pos = nil, Look = nil, OldFOV = nil, Conn = nil,
+        TargetPlayer = nil, Filter = "", Orbit = 0, YawAuto = 0,
+        T = 0, Pos = nil, Look = nil, OldFOV = nil, Conn = nil,
     }
     Inv.Cine = C
 
     local function cineTarget()
-        if C.TargetName and C.TargetName ~= "" then
-            local q = C.TargetName:lower()
-            for _, pl in ipairs(Players:GetPlayers()) do
-                if pl.Name:lower():find(q, 1, true) or pl.DisplayName:lower():find(q, 1, true) then
-                    return pl.Character
-                end
-            end
-        end
+        local pl = C.TargetPlayer
+        if pl and pl.Parent == Players then return pl.Character end
         return LP.Character
+    end
+
+    -- pilih pemain yang difokuskan (nil = diri sendiri)
+    local function cineSelect(pl)
+        C.TargetPlayer = pl
+        C.Base, C.Anim, C.Pos = nil, nil, nil   -- kamera meluncur halus ke target baru
     end
 
     local function cineStop()
@@ -5373,9 +5465,14 @@ do
         C.Enabled, C.Pos, C.Look = true, nil, nil
         if C.Conn then C.Conn:Disconnect() end
         C.Conn = RunService.RenderStepped:Connect(function(dt)
+            if C.TargetPlayer and C.TargetPlayer.Parent ~= Players then
+                cineSelect(nil)
+                toast("Target keluar, kamera kembali ke dirimu")
+            end
             local char = cineTarget()
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             if not hrp then return end
+            C.YawAuto = (C.YawAuto + C.Orbit * dt) % 360
             local cam2 = workspace.CurrentCamera
             if cam2.CameraType ~= Enum.CameraType.Scriptable then
                 cam2.CameraType = Enum.CameraType.Scriptable
@@ -5393,7 +5490,7 @@ do
             local pivot = hrp.Position + Vector3.new(0, C.Height, 0)
             local flat = Vector3.new(hrp.CFrame.LookVector.X, 0, hrp.CFrame.LookVector.Z)
             if flat.Magnitude < 0.01 then flat = Vector3.new(0, 0, -1) end
-            local dir = (CFrame.Angles(0, math.rad(C.Yaw), 0) * CFrame.new(flat.Unit)).Position
+            local dir = (CFrame.Angles(0, math.rad(C.Yaw + C.YawAuto), 0) * CFrame.new(flat.Unit)).Position
             local wantPos = pivot + dir * C.Dist + Vector3.new(0, 0.6, 0)
 
             -- mode kunci: posisi kamera diam di tempat pertama dihitung
@@ -5445,14 +5542,58 @@ do
             end)
         end)
 
-        local tb = textbox("Nama pemain yang difokuskan (kosong = diri sendiri)")
-        tb.Text = C.TargetName or ""
-        tb.FocusLost:Connect(function() C.TargetName = tb.Text end)
+        -- ===== DAFTAR PEMAIN: kunci kamera ke avatar orang lain =====
+        local who = (C.TargetPlayer and C.TargetPlayer.Parent == Players) and dn(C.TargetPlayer) or "Diri sendiri"
+        label("🎯 Kamera mengikuti: " .. who)
+        label("👥 PILIH PEMAIN YANG DIREKAM")
+        local tb = textbox("Cari nama pemain (filter daftar)")
+        tb.Text = C.Filter or ""
+        tb.FocusLost:Connect(function()
+            C.Filter = tb.Text
+            Inv.cinemaTab()
+        end)
+        button((C.TargetPlayer == nil and "✅  " or "🧍  ") .. "Diri sendiri", function()
+            cineSelect(nil)
+            if not C.Enabled then cineStart() end
+            Inv.cinemaTab()
+        end)
+        local q = (C.Filter or ""):lower()
+        local any = false
+        for _, pl in ipairs(Players:GetPlayers()) do
+            if pl ~= LP and (q == "" or pl.Name:lower():find(q, 1, true)
+                or pl.DisplayName:lower():find(q, 1, true)) then
+                any = true
+                local mark = (C.TargetPlayer == pl) and "✅  " or "🎯  "
+                button(mark .. dn(pl), function()
+                    cineSelect(pl)
+                    if not C.Enabled then cineStart() end
+                    toast("Kamera mengikuti " .. pl.Name)
+                    Inv.cinemaTab()
+                end)
+            end
+        end
+        if not any then label("Tidak ada pemain lain yang cocok.") end
+        button("🔄  Refresh daftar pemain", function() Inv.cinemaTab() end)
+
+        label("🎥 FRAMING CEPAT (untuk konten dance)")
+        button("🧍  Seluruh badan", function()
+            C.Dist, C.Height, C.FOV = 11, 1.2, 60
+            Inv.cinemaTab()
+        end)
+        button("🙂  Setengah badan", function()
+            C.Dist, C.Height, C.FOV = 6.5, 1.8, 60
+            Inv.cinemaTab()
+        end)
+        button("😀  Wajah (close up)", function()
+            C.Dist, C.Height, C.FOV = 3.2, 2.4, 50
+            Inv.cinemaTab()
+        end)
 
         slider("Jarak kamera", 2, 40, C.Dist, 0.5, function(v) C.Dist = v end, "%.1f")
         slider("Tinggi fokus", -2, 8, C.Height, 0.1, function(v) C.Height = v end, "%.1f")
         slider("Sudut (0 = depan, 180 = belakang)", -180, 180, C.Yaw, 5, function(v) C.Yaw = v end, "%d")
         slider("FOV", 30, 100, C.FOV, 1, function(v) C.FOV = v end, "%d")
+        slider("Putar kamera otomatis (derajat/detik, 0 = mati)", -90, 90, C.Orbit, 5, function(v) C.Orbit = v end, "%d")
         slider("Ikut gerakan karakter (emote/jalan)", 0, 5, C.Follow, 0.1, function(v) C.Follow = v end, "%.1f")
         slider("Goyangan konstan (0 = mati)", 0, 1.5, C.Sway, 0.05, function(v) C.Sway = v end, "%.2f")
         slider("Kecepatan goyang", 0.5, 6, C.SwaySpeed, 0.1, function(v) C.SwaySpeed = v end, "%.1f")
@@ -5461,9 +5602,126 @@ do
         button("↩  Preset mirip video (depan, ikut gerakan)", function()
             C.Dist, C.Height, C.Yaw, C.FOV = 9, 1.5, 0, 60
             C.Sway, C.SwaySpeed, C.Smooth, C.Follow = 0, 2, 10, 1.5
+            C.Orbit, C.YawAuto = 0, 0
             Inv.cinemaTab()
         end)
-        label("Kalau Free Cam sedang aktif, otomatis dimatikan saat Cinematic Cam dinyalakan.")
+        label("Free Cam otomatis mati saat Cinematic Cam menyala. Kamera hanya berubah di layarmu.")
+    end
+end
+
+--====================================
+-- SERVER: REJOIN + CARI SERVER
+--====================================
+do
+    local TeleportService = game:GetService("TeleportService")
+    local HttpService = game:GetService("HttpService")
+    local S = {Sort = "Asc", Cursor = nil, List = {}, Busy = false, Msg = "Tekan Muat daftar server."}
+
+    local function httpGet(url)
+        local req = (syn and syn.request) or (http and http.request) or http_request or request
+        if req then
+            local ok, res = pcall(req, {Url = url, Method = "GET"})
+            if ok and type(res) == "table" and res.Body then return res.Body end
+        end
+        local ok, body = pcall(function() return game:HttpGet(url) end)
+        if ok then return body end
+    end
+
+    local function joinServer(id)
+        toast("Pindah server...")
+        local ok, err = pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, id, LP) end)
+        if not ok then toast("Gagal pindah: " .. tostring(err):sub(1, 60)) end
+    end
+
+    local function rejoin()
+        toast("Rejoin...")
+        local ok, err = pcall(function()
+            if #Players:GetPlayers() <= 1 then
+                TeleportService:Teleport(game.PlaceId, LP)   -- server sepi: otomatis dapat server baru
+            else
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LP)
+            end
+        end)
+        if not ok then toast("Gagal rejoin: " .. tostring(err):sub(1, 60)) end
+    end
+
+    local function fetch(more)
+        if S.Busy then return end
+        S.Busy = true
+        S.Msg = "Memuat server..."
+        local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=%s&excludeFullGames=true&limit=100")
+            :format(game.PlaceId, S.Sort)
+        if more and S.Cursor then url = url .. "&cursor=" .. S.Cursor end
+        local body = httpGet(url)
+        local ok, data = pcall(function() return HttpService:JSONDecode(body or "") end)
+        if not ok or type(data) ~= "table" or type(data.data) ~= "table" then
+            S.Msg = "Gagal memuat (executor tanpa HTTP, atau kena limit). Coba lagi sebentar."
+        else
+            if not more then S.List = {} end
+            for _, sv in ipairs(data.data) do
+                if sv.id ~= game.JobId and (sv.playing or 0) < (sv.maxPlayers or 0) then
+                    table.insert(S.List, sv)
+                end
+            end
+            S.Cursor = data.nextPageCursor
+            S.Msg = #S.List .. " server ditemukan."
+        end
+        S.Busy = false
+    end
+
+    local function refresh()
+        if ActiveTab == Inv.serverTab then Inv.serverTab() end
+    end
+
+    Inv.serverTab = function()
+        clearContent()
+        label("🌐 SERVER")
+        local status = label(S.Msg)
+        status.Font = Enum.Font.Gotham
+        status.TextSize = 12
+        status.TextColor3 = GREY
+
+        button("🔁  Rejoin (masuk lagi ke server ini)", rejoin)
+        button("🎲  Pindah ke server acak", function()
+            toast("Pindah ke server acak...")
+            pcall(function() TeleportService:Teleport(game.PlaceId, LP) end)
+        end)
+        button("🏝  Masuk server paling sepi", function()
+            task.spawn(function()
+                S.Sort = "Asc"
+                fetch(false)
+                if S.List[1] then joinServer(S.List[1].id) else refresh() end
+            end)
+        end)
+        button("🎉  Masuk server paling ramai (belum penuh)", function()
+            task.spawn(function()
+                S.Sort = "Desc"
+                fetch(false)
+                if S.List[1] then joinServer(S.List[1].id) else refresh() end
+            end)
+        end)
+
+        label("🔎 DAFTAR SERVER")
+        button("Urut: " .. (S.Sort == "Asc" and "paling sepi" or "paling ramai") .. "  (ketuk untuk ganti)", function()
+            S.Sort = S.Sort == "Asc" and "Desc" or "Asc"
+            refresh()
+        end)
+        button("📥  Muat daftar server", function()
+            task.spawn(function() fetch(false) refresh() end)
+        end)
+
+        for i, sv in ipairs(S.List) do
+            if i > 40 then break end
+            local ping = sv.ping and (" • " .. tostring(sv.ping) .. "ms") or ""
+            button(("👥 %d/%d%s   →  Masuk"):format(sv.playing or 0, sv.maxPlayers or 0, ping), function()
+                joinServer(sv.id)
+            end)
+        end
+        if S.Cursor and #S.List > 0 then
+            button("⬇  Muat lebih banyak server", function()
+                task.spawn(function() fetch(true) refresh() end)
+            end)
+        end
     end
 end
 
@@ -5476,6 +5734,7 @@ makeTab("👻  Invisible", Inv.tab)
 makeTab("💎  Limited Items", limitedItemTab)
 makeTab("◎  Free Cam", freeCamTab)
 makeTab("🎬  Cinematic Cam", Inv.cinemaTab)
+makeTab("🌐  Server", Inv.serverTab)
 makeTab("⚡  Speed & Jump", moveTab)
 makeTab("🕊  Fly & NoClip", flyTab)
 makeTab("🛡  Anti Lag / Crash", antiLagTab)
