@@ -33,11 +33,11 @@ local AllowedUsernames = {
     "Celvin_tin",
     "Hantu_belau2",
     "adefabian7",
-    "budakkaseppp",
     "flesss377",
+    "budakkaseppp",
+    "haushh42",
     "ell4voraa",
     "junvy7",
-    "haushh42",
     "AYELxzy978",
 }
 
@@ -896,7 +896,90 @@ local function ns(...)
     return NumberSequence.new(pts)
 end
 
+-- ===== SALJU DI TANAH: tanah/rumput diputihkan (hanya terlihat di layarmu) =====
+local snowGround = {Parts = {}, Terrain = {}, Conn = nil, Deco = nil, Token = 0}
+local SNOW_COLOR = Color3.fromRGB(238, 243, 252)
+local SNOW_MATS = {
+    [Enum.Material.Grass] = true, [Enum.Material.LeafyGrass] = true, [Enum.Material.Ground] = true,
+    [Enum.Material.Mud] = true, [Enum.Material.Sand] = true, [Enum.Material.Sandstone] = true,
+}
+local SNOW_TERRAIN = {
+    Enum.Material.Grass, Enum.Material.LeafyGrass, Enum.Material.Ground, Enum.Material.Mud,
+    Enum.Material.Sand, Enum.Material.Sandstone, Enum.Material.Rock, Enum.Material.Slate,
+}
+
+local function snowifyPart(d)
+    if not d:IsA("BasePart") or d:IsA("Terrain") then return end
+    if snowGround.Parts[d] or d.Transparency > 0.9 then return end
+    if d:FindFirstChildOfClass("SurfaceAppearance") then return end
+    local c = d.Color
+    local flatLarge = d.Size.Y <= 6 and d.Size.X >= 30 and d.Size.Z >= 30 and c.G > c.R and c.G > c.B
+    if not (SNOW_MATS[d.Material] or flatLarge) then return end
+    local m = d:FindFirstAncestorOfClass("Model")
+    if m and Players:GetPlayerFromCharacter(m) then return end
+    snowGround.Parts[d] = {d.Color, d.Material}
+    d.Color = SNOW_COLOR
+    d.Material = Enum.Material.Snow
+end
+
+local function applySnowGround()
+    snowGround.Token = snowGround.Token + 1
+    local token = snowGround.Token
+    local terrain = workspace:FindFirstChildOfClass("Terrain")
+    if terrain then
+        pcall(function()
+            if snowGround.Deco == nil then snowGround.Deco = terrain.Decoration end
+            terrain.Decoration = false   -- rumput tinggi disembunyikan supaya tidak menembus salju
+        end)
+        for _, mat in ipairs(SNOW_TERRAIN) do
+            pcall(function()
+                if snowGround.Terrain[mat] == nil then snowGround.Terrain[mat] = terrain:GetMaterialColor(mat) end
+                local col = SNOW_COLOR
+                if mat == Enum.Material.Rock or mat == Enum.Material.Slate then
+                    col = Color3.fromRGB(225, 232, 245)
+                end
+                terrain:SetMaterialColor(mat, col)
+            end)
+        end
+    end
+    if snowGround.Conn then snowGround.Conn:Disconnect() end
+    snowGround.Conn = workspace.DescendantAdded:Connect(snowifyPart)
+    task.spawn(function()
+        local n = 0
+        for _, d in ipairs(workspace:GetDescendants()) do
+            if snowGround.Token ~= token then return end
+            snowifyPart(d)
+            n = n + 1
+            if n % 1500 == 0 then task.wait() end
+        end
+    end)
+end
+
+local function restoreSnowGround()
+    snowGround.Token = snowGround.Token + 1
+    if snowGround.Conn then snowGround.Conn:Disconnect() end
+    for part, orig in pairs(snowGround.Parts) do
+        if part.Parent then
+            pcall(function()
+                part.Color = orig[1]
+                part.Material = orig[2]
+            end)
+        end
+    end
+    local terrain = workspace:FindFirstChildOfClass("Terrain")
+    if terrain then
+        for mat, col in pairs(snowGround.Terrain) do
+            pcall(function() terrain:SetMaterialColor(mat, col) end)
+        end
+        if snowGround.Deco ~= nil then
+            pcall(function() terrain.Decoration = snowGround.Deco end)
+        end
+    end
+    snowGround = {Parts = {}, Terrain = {}, Conn = nil, Deco = nil, Token = snowGround.Token}
+end
+
 local function stopWeather()
+    restoreSnowGround()
     if weather.Conn then weather.Conn:Disconnect() end
     if weather.Part then pcall(function() weather.Part:Destroy() end) end
     if weather.Bars then pcall(function() weather.Bars:Destroy() end) end
@@ -1167,6 +1250,7 @@ GraphicsPresets.Salju = function()
         Saturation = -0.25, Contrast = 0.08, Brightness = 0.05})
     addFx("BloomEffect", "SaljuBloom", {Intensity = 0.35, Size = 28, Threshold = 1.1})
     setClouds(0.85, 0.7, Color3.fromRGB(235, 240, 248))
+    applySnowGround()
     startWeather({Size = Vector3.new(90, 1, 90), Height = 24, Count = 3, Props = {
         Texture = SMOKE_TEX, Rate = 140,
         Color = ColorSequence.new(Color3.new(1, 1, 1)),
@@ -5725,6 +5809,443 @@ do
     end
 end
 
+--====================================
+-- TELEPORT TEMPAT (cari otomatis di map + lokasi yang bisa kamu simpan sendiri)
+--====================================
+do
+    local HttpService = game:GetService("HttpService")
+    local FILE = "DiiUi_TeleportSpots.json"
+    local S = {Saved = {}, SaveMode = false, Cycle = {}, Msg = "Ketuk lokasi untuk teleport."}
+
+    pcall(function()
+        if isfile and readfile and isfile(FILE) then
+            local data = HttpService:JSONDecode(readfile(FILE))
+            if type(data) == "table" then S.Saved = data end
+        end
+    end)
+    local function persist()
+        pcall(function()
+            if writefile then writefile(FILE, HttpService:JSONEncode(S.Saved)) end
+        end)
+    end
+
+    -- kw = kata kunci nama objek di map; pick = urutan hasil yang dipakai
+    local PLACES = {
+        {name = "Piano Konser", kw = {"piano"}},
+        {name = "Tempat Nonton", kw = {"nonton", "theater", "theatre", "cinema", "bioskop"}},
+        {name = "Rumah Ayam", kw = {"ayam", "chicken", "coop"}},
+        {name = "Rumah Pohon", kw = {"treehouse", "rumah pohon", "rumahpohon"}},
+        {name = "Tempat Santai", kw = {"santai", "chill", "lounge"}},
+        {name = "Perosotan", kw = {"perosot", "slide"}},
+        {name = "Picnic", kw = {"picnic", "piknik"}},
+        {name = "Api Unggun", kw = {"campfire", "bonfire", "api unggun", "apiunggun"}},
+        {name = "Papan Iklan", kw = {"billboard", "iklan"}},
+        {name = "Jembatan", kw = {"bridge", "jembatan"}},
+        {name = "Green House", kw = {"greenhouse", "green house"}},
+        {name = "Kereta Gantung", kw = {"gondola", "cable", "kereta"}},
+        {name = "Hutan Studio", kw = {"studio"}},
+        {name = "Taman Bermain", kw = {"playground", "taman bermain", "tamanbermain"}},
+        {name = "Labirin", kw = {"labirin", "maze"}},
+        {name = "Spawn 1", spawn = true, pick = 1},
+        {name = "Spawn 2", spawn = true, pick = 2},
+        {name = "Isolasi Diri 1", kw = {"isolasi", "isolation"}, pick = 1},
+        {name = "Isolasi Diri 2", kw = {"isolasi", "isolation"}, pick = 2},
+        {name = "Carriage", kw = {"carriage"}},
+        {name = "Leaderboard", kw = {"leaderboard"}},
+        {name = "Market Stall", kw = {"market", "stall"}},
+        {name = "Booth System", kw = {"booth"}},
+    }
+
+    local function inCharacter(inst)
+        local p = inst
+        while p and p ~= workspace do
+            if p:IsA("Model") and Players:GetPlayerFromCharacter(p) then return true end
+            p = p.Parent
+        end
+        return false
+    end
+
+    local function findMatches(entry)
+        local list = {}
+        if entry.spawn then
+            for _, d in ipairs(workspace:GetDescendants()) do
+                if d:IsA("SpawnLocation") then list[#list + 1] = d end
+            end
+            return list
+        end
+        local matched, set = {}, {}
+        for _, d in ipairs(workspace:GetDescendants()) do
+            if d:IsA("Model") or d:IsA("BasePart") then
+                local n = d.Name:lower()
+                for _, k in ipairs(entry.kw) do
+                    if n:find(k, 1, true) then
+                        if not inCharacter(d) then
+                            matched[#matched + 1] = d
+                            set[d] = true
+                        end
+                        break
+                    end
+                end
+            end
+        end
+        for _, d in ipairs(matched) do
+            local skip = false
+            local p = d.Parent
+            while p and p ~= workspace do
+                if set[p] then skip = true break end
+                p = p.Parent
+            end
+            if not skip then list[#list + 1] = d end
+        end
+        return list
+    end
+
+    local function spotPosition(inst)
+        if inst:IsA("Model") then
+            local cf, size = inst:GetBoundingBox()
+            return cf.Position + Vector3.new(0, size.Y / 2 + 4, 0)
+        end
+        return inst.Position + Vector3.new(0, inst.Size.Y / 2 + 4, 0)
+    end
+
+    local function teleportTo(pos)
+        local char = LP.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return false end
+        char:PivotTo(CFrame.new(pos))
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        return true
+    end
+
+    Inv.teleportTab = function()
+        clearContent()
+        label("📍 TELEPORT TEMPAT")
+        local status = label(S.Msg)
+        status.Font = Enum.Font.Gotham
+        status.TextSize = 12
+        status.TextColor3 = GREY
+        local function setStatus(t)
+            S.Msg = t
+            if status and status.Parent then status.Text = t end
+        end
+
+        local modeBtn
+        modeBtn = button("", nil)
+        local function refreshMode()
+            modeBtn.Text = "Mode: " .. (S.SaveMode and "💾 SIMPAN posisiku ke lokasi" or "🚀 PERGI (teleport)") .. "  (ketuk untuk ganti)"
+        end
+        refreshMode()
+        guardedClick(modeBtn, Content, function()
+            S.SaveMode = not S.SaveMode
+            refreshMode()
+            setStatus(S.SaveMode and "Berdiri di lokasi yang diinginkan, lalu ketuk namanya."
+                or "Ketuk lokasi untuk teleport.")
+        end)
+
+        local function go(entry)
+            local name = entry.name
+            local sv = S.Saved[name]
+            if sv then
+                if teleportTo(Vector3.new(sv[1], sv[2] + 3, sv[3])) then
+                    setStatus("Teleport ke " .. name .. " (lokasi tersimpan)")
+                end
+                return
+            end
+            setStatus("Mencari " .. name .. " di map...")
+            local matches = findMatches(entry)
+            if #matches == 0 then
+                setStatus("'" .. name .. "' belum ketemu di map. Berdiri di sana, ganti mode ke SIMPAN, lalu ketuk namanya.")
+                return
+            end
+            local idx = entry.pick
+            if not idx then
+                idx = (S.Cycle[name] or 0) % #matches + 1
+                S.Cycle[name] = idx
+            end
+            local target = matches[idx] or matches[1]
+            if teleportTo(spotPosition(target)) then
+                setStatus(("Teleport ke %s (%d dari %d hasil)"):format(name, math.min(idx, #matches), #matches))
+            end
+        end
+
+        local function saveHere(name, btn, prefix)
+            local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+            if not hrp then setStatus("Karakter belum tersedia.") return end
+            local p = hrp.Position
+            S.Saved[name] = {p.X, p.Y, p.Z}
+            persist()
+            if btn then btn.Text = "✅ " .. prefix end
+            setStatus("Lokasi '" .. name .. "' disimpan.")
+        end
+
+        for i, entry in ipairs(PLACES) do
+            local text = i .. ". " .. entry.name
+            local b
+            b = button((S.Saved[entry.name] and "✅ " or "📍 ") .. text, nil)
+            guardedClick(b, Content, function()
+                if S.SaveMode then saveHere(entry.name, b, text) else go(entry) end
+            end)
+        end
+
+        -- lokasi buatan sendiri
+        local custom = {}
+        for name in pairs(S.Saved) do
+            local isDefault = false
+            for _, e in ipairs(PLACES) do if e.name == name then isDefault = true break end end
+            if not isDefault then custom[#custom + 1] = name end
+        end
+        table.sort(custom)
+        if #custom > 0 then label("⭐ LOKASI BUATANMU") end
+        for _, name in ipairs(custom) do
+            local b = button("⭐ " .. name .. "   (ketuk = pergi, tahan mode simpan = timpa)", nil)
+            guardedClick(b, Content, function()
+                if S.SaveMode then
+                    saveHere(name, nil, name)
+                else
+                    local sv = S.Saved[name]
+                    if sv and teleportTo(Vector3.new(sv[1], sv[2] + 3, sv[3])) then
+                        setStatus("Teleport ke " .. name)
+                    end
+                end
+            end)
+        end
+
+        label("➕ TAMBAH LOKASI BARU")
+        local nameBox = textbox("Nama lokasi baru")
+        button("💾  Simpan posisiku sebagai lokasi baru", function()
+            local name = (nameBox.Text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+            if name == "" then setStatus("Isi nama lokasinya dulu.") return end
+            saveHere(name, nil, name)
+            Inv.teleportTab()
+        end)
+        button("🗑  Hapus semua lokasi tersimpan", function()
+            S.Saved = {}
+            persist()
+            setStatus("Semua lokasi tersimpan dihapus.")
+            Inv.teleportTab()
+        end)
+    end
+end
+
+--====================================
+-- DECAL (daftar ID gambar; dipasang ke permukaan yang kamu bidik)
+-- Catatan: decal dibuat dari sisi client, jadi hanya terlihat di layarmu.
+--====================================
+do
+    local HttpService = game:GetService("HttpService")
+    local FILE = "DiiUi_Decals.json"
+    local D = {List = {}, Size = 8, Msg = "Tambah ID decal, lalu bidik permukaan dan ketuk 📌."}
+    local folder
+
+    pcall(function()
+        if isfile and readfile and isfile(FILE) then
+            local data = HttpService:JSONDecode(readfile(FILE))
+            if type(data) == "table" then D.List = data end
+        end
+    end)
+    local function persist()
+        pcall(function()
+            if writefile then writefile(FILE, HttpService:JSONEncode(D.List)) end
+        end)
+    end
+
+    local function clearDecals()
+        if folder then pcall(function() folder:Destroy() end) folder = nil end
+    end
+    Gui.Destroying:Connect(clearDecals)
+
+    local function placeDecal(id, setStatus)
+        local cam = workspace.CurrentCamera
+        if not cam then return end
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Exclude
+        local ignore = {}
+        if LP.Character then ignore[#ignore + 1] = LP.Character end
+        if folder then ignore[#ignore + 1] = folder end
+        params.FilterDescendantsInstances = ignore
+        local res = workspace:Raycast(cam.CFrame.Position, cam.CFrame.LookVector * 300, params)
+        if not res then
+            setStatus("Arahkan kamera (titik tengah layar) ke dinding atau permukaan dulu.")
+            return
+        end
+        if not folder or not folder.Parent then
+            folder = Instance.new("Folder")
+            folder.Name = "DiiUi_Decals"
+            folder.Parent = workspace
+        end
+        local part = Instance.new("Part")
+        part.Anchored = true
+        part.CanCollide = false
+        part.CanQuery = false
+        part.CanTouch = false
+        part.CastShadow = false
+        part.Transparency = 1
+        part.Size = Vector3.new(D.Size, D.Size, 0.05)
+        part.CFrame = CFrame.lookAt(res.Position + res.Normal * 0.03, res.Position + res.Normal * 2)
+        local decal = Instance.new("Decal")
+        decal.Face = Enum.NormalId.Front
+        decal.Texture = "rbxassetid://" .. id
+        decal.Parent = part
+        part.Parent = folder
+        setStatus("Decal " .. id .. " dipasang.")
+    end
+
+    Inv.decalTab = function()
+        clearContent()
+        label("🖼 DECAL LIST")
+        local status = label(D.Msg)
+        status.Font = Enum.Font.Gotham
+        status.TextSize = 12
+        status.TextColor3 = GREY
+        local function setStatus(t)
+            D.Msg = t
+            if status and status.Parent then status.Text = t end
+        end
+
+        local box = textbox("Tempel ID decal / link gambar Roblox")
+        button("➕  Tambah ke daftar", function()
+            local id = tostring(box.Text or ""):match("%d%d%d%d%d+")
+            if not id then setStatus("ID tidak valid. Tempel angka ID decal-nya.") return end
+            for _, v in ipairs(D.List) do
+                if v == id then setStatus("ID itu sudah ada di daftar.") return end
+            end
+            table.insert(D.List, id)
+            persist()
+            Inv.decalTab()
+        end)
+        slider("Ukuran decal (studs)", 1, 40, D.Size, 1, function(v) D.Size = v end, "%d")
+        button("🧹  Hapus semua decal yang terpasang", function()
+            clearDecals()
+            setStatus("Semua decal yang terpasang dihapus.")
+        end)
+
+        for i, id in ipairs(D.List) do
+            local row = Instance.new("Frame")
+            row.Size = UDim2.new(1, -5, 0, 54)
+            row.BackgroundColor3 = Color3.fromRGB(65, 39, 105)
+            row.Parent = Content
+            Instance.new("UICorner", row).CornerRadius = UDim.new(0, 7)
+
+            local img = Instance.new("ImageLabel")
+            img.Size = UDim2.fromOffset(44, 44)
+            img.Position = UDim2.fromOffset(5, 5)
+            img.BackgroundTransparency = 1
+            img.Image = string.format("rbxthumb://type=Asset&id=%s&w=150&h=150", id)
+            img.Parent = row
+
+            local idLbl = Instance.new("TextLabel")
+            idLbl.Position = UDim2.fromOffset(56, 0)
+            idLbl.Size = UDim2.new(1, -150, 1, 0)
+            idLbl.BackgroundTransparency = 1
+            idLbl.Text = id
+            idLbl.TextColor3 = WHITE
+            idLbl.Font = Enum.Font.GothamSemibold
+            idLbl.TextSize = 13
+            idLbl.TextXAlignment = Enum.TextXAlignment.Left
+            idLbl.Parent = row
+
+            local use = Instance.new("TextButton")
+            use.Size = UDim2.fromOffset(52, 34)
+            use.Position = UDim2.new(1, -96, 0.5, -17)
+            use.BackgroundColor3 = Color3.fromRGB(0, 200, 170)
+            use.Text = "📌"
+            use.TextSize = 16
+            use.Font = Enum.Font.GothamBold
+            use.TextColor3 = Color3.new(0, 0, 0)
+            use.Parent = row
+            Instance.new("UICorner", use).CornerRadius = UDim.new(0, 6)
+            guardedClick(use, Content, function() placeDecal(id, setStatus) end)
+
+            local del = Instance.new("TextButton")
+            del.Size = UDim2.fromOffset(36, 34)
+            del.Position = UDim2.new(1, -40, 0.5, -17)
+            del.BackgroundColor3 = Color3.fromRGB(170, 60, 60)
+            del.Text = "🗑"
+            del.TextSize = 14
+            del.Font = Enum.Font.GothamBold
+            del.TextColor3 = WHITE
+            del.Parent = row
+            Instance.new("UICorner", del).CornerRadius = UDim.new(0, 6)
+            guardedClick(del, Content, function()
+                table.remove(D.List, i)
+                persist()
+                Inv.decalTab()
+            end)
+        end
+        if #D.List == 0 then label("Belum ada decal. Tambahkan ID di atas.") end
+        label("Decal hanya terlihat di layarmu (dibuat dari sisi client).")
+    end
+end
+
+--====================================
+-- TORNADO SPIN (karakter berputar + efek debu pusaran)
+--====================================
+do
+    local T = {On = false, Speed = 300, Particles = true, Conn = nil, Emitter = nil, OldAuto = nil}
+
+    local function stopTornado()
+        T.On = false
+        if T.Conn then T.Conn:Disconnect() T.Conn = nil end
+        if T.Emitter then pcall(function() T.Emitter:Destroy() end) T.Emitter = nil end
+        local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+        if hum and T.OldAuto ~= nil then hum.AutoRotate = T.OldAuto end
+        T.OldAuto = nil
+    end
+
+    local function startTornado()
+        stopTornado()
+        local char = LP.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not (hum and hrp) then toast("Karakter belum tersedia") return end
+        T.On = true
+        T.OldAuto = hum.AutoRotate
+        hum.AutoRotate = false
+
+        if T.Particles then
+            local e = Instance.new("ParticleEmitter")
+            e.Texture = "rbxasset://textures/particles/smoke_main.dds"
+            e.Color = ColorSequence.new(Color3.fromRGB(200, 200, 210))
+            e.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 1.5), NumberSequenceKeypoint.new(1, 7)})
+            e.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(1, 1)})
+            e.Lifetime = NumberRange.new(0.8, 1.4)
+            e.Rate = 60
+            e.Speed = NumberRange.new(10, 16)
+            e.SpreadAngle = Vector2.new(25, 25)
+            e.EmissionDirection = Enum.NormalId.Top
+            e.Rotation = NumberRange.new(0, 360)
+            e.RotSpeed = NumberRange.new(-180, 180)
+            e.LightInfluence = 0.5
+            e.Parent = hrp
+            T.Emitter = e
+        end
+
+        T.Conn = RunService.RenderStepped:Connect(function(dt)
+            local c = LP.Character
+            local r = c and c:FindFirstChild("HumanoidRootPart")
+            if not r then return end
+            r.CFrame = r.CFrame * CFrame.Angles(0, math.rad(T.Speed * math.min(dt, 0.05)), 0)
+        end)
+    end
+
+    LP.CharacterAdded:Connect(function() if T.On then stopTornado() end end)
+    Gui.Destroying:Connect(stopTornado)
+
+    Inv.tornadoTab = function()
+        clearContent()
+        label("🌪 TORNADO SPIN")
+        label("Karakter berputar dengan efek debu pusaran. Hanya memutar dirimu sendiri.")
+        toggleButton("🌪  Tornado Spin", function() return T.On end, function()
+            if T.On then stopTornado() else startTornado() end
+        end)
+        slider("Kecepatan putar (derajat/detik)", 60, 720, T.Speed, 10, function(v) T.Speed = v end, "%d")
+        toggleButton("💨  Efek debu pusaran", function() return T.Particles end, function()
+            T.Particles = not T.Particles
+            if T.On then startTornado() end
+        end)
+    end
+end
+
 -- CREATE TABS
 makeTab("⌂  Home", homeTab)
 makeTab("☀  Graphics", graphicsTab)
@@ -5735,6 +6256,9 @@ makeTab("💎  Limited Items", limitedItemTab)
 makeTab("◎  Free Cam", freeCamTab)
 makeTab("🎬  Cinematic Cam", Inv.cinemaTab)
 makeTab("🌐  Server", Inv.serverTab)
+makeTab("📍  Teleport Tempat", Inv.teleportTab)
+makeTab("🖼  Decal", Inv.decalTab)
+makeTab("🌪  Tornado Spin", Inv.tornadoTab)
 makeTab("⚡  Speed & Jump", moveTab)
 makeTab("🕊  Fly & NoClip", flyTab)
 makeTab("🛡  Anti Lag / Crash", antiLagTab)
