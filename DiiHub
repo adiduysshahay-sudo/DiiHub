@@ -33,7 +33,6 @@ local AllowedUsernames = {
     "Celvin_tin",
     "Hantu_belau2",
     "adefabian7",
-    "junvy7",
     "rridho_66",
     "nasss_TH",
     "bbymloo",
@@ -3127,7 +3126,7 @@ end
 -- Tap username -> langsung menempel. Gaya bisa diganti kapan saja saat menempel.
 -- Lepas: lompat, tombol ❌ di layar, atau tombol di menu.
 --====================================
-local Tempel = {Target = nil, StyleIdx = 1, T = 0, Saved = nil, AnimOn = true, Tracks = {}, AnimKey = nil, Predict = true, PredictMul = 1.5, Vel = nil}
+local Tempel = {Target = nil, StyleIdx = 1, T = 0, Saved = nil, AnimOn = true, Tracks = {}, AnimKey = nil, Predict = true, PredictMul = 1.5, Vel = nil, Precise = true}
 local TempelStyles = {
     {Name = "🎒 Backpack (di punggung)", Fn = function(t) return CFrame.new(0, 0.2, 1.3) end},
     {Name = "🐴 Gendong naik punggung", Fn = function(t) return CFrame.new(0, 1.0, 0.9) * CFrame.Angles(math.rad(-12), 0, 0) end},
@@ -3261,6 +3260,11 @@ function stopTempel(msg)
 end
 
 Tempel.Pop = function(dur)
+    if Tempel.Precise then
+        Tempel.From = nil
+        Tempel.Intro = 0
+        return
+    end
     Tempel.From = Tempel.Cur
     Tempel.Intro = os.clock()
     Tempel.IntroDur = dur or 0.18
@@ -3280,9 +3284,15 @@ local function startTempel(player)
     Tempel.Cur = root.CFrame
     detachBtn.Visible = true
     -- animasi masuk: lompat kecil + easing, lalu terkunci TANPA delay
-    Tempel.From = root.CFrame
-    Tempel.Intro = os.clock()
-    Tempel.IntroDur = 0.22
+    if Tempel.Precise then
+        Tempel.From = nil   -- tanpa animasi masuk: langsung terkunci di frame pertama
+        Tempel.Intro = 0
+        Tempel.IntroDur = 0.2
+    else
+        Tempel.From = root.CFrame
+        Tempel.Intro = os.clock()
+        Tempel.IntroDur = 0.22
+    end
     Tempel.Last = os.clock()
     Tempel.Lean = 0
     Tempel.Vel = nil
@@ -3311,7 +3321,7 @@ local function startTempel(player)
             -- badan ikut miring sedikit sesuai arah/kecepatan target (hidup, bukan patung)
             -- kecepatan target dihaluskan sedikit supaya tidak bergetar
             local rawV = tr.AssemblyLinearVelocity
-            Tempel.Vel = Tempel.Vel and Tempel.Vel:Lerp(rawV, 1 - math.exp(-dt * 45)) or rawV
+            Tempel.Vel = (not Tempel.Precise and Tempel.Vel) and Tempel.Vel:Lerp(rawV, 1 - math.exp(-dt * 45)) or rawV
             local lv = tr.CFrame:VectorToObjectSpace(Tempel.Vel)
             local leanGoal = math.clamp(-lv.Z / 16, -1, 1) * math.rad(8)
             Tempel.Lean += (leanGoal - Tempel.Lean) * (1 - math.exp(-dt * 12))
@@ -3332,8 +3342,13 @@ local function startTempel(player)
             end
             local base = tr.CFrame + Tempel.Vel * lead
 
-            local desired = base * TempelStyles[Tempel.StyleIdx].Fn(t)
-                * CFrame.new(0, bob, 0) * CFrame.Angles(Tempel.Lean, 0, roll)
+            local desired
+            if Tempel.Precise then
+                desired = base * TempelStyles[Tempel.StyleIdx].Fn(t)   -- tepat di titik gaya, tanpa goyang tambahan
+            else
+                desired = base * TempelStyles[Tempel.StyleIdx].Fn(t)
+                    * CFrame.new(0, bob, 0) * CFrame.Angles(Tempel.Lean, 0, roll)
+            end
 
             local p = (now - (Tempel.Intro or 0)) / (Tempel.IntroDur or 0.2)
             if p < 1 and Tempel.From then
@@ -3365,6 +3380,10 @@ local function startTempel(player)
         end}
     end
     if not Tempel.Conn2 then Tempel.Conn2 = RunService.Heartbeat:Connect(Tempel.Step) end
+    -- sebelum fisika dihitung: posisi sudah benar saat server/replikasi mengambil posisimu
+    if not Tempel.Conn3 then
+        Tempel.Conn3 = (RunService.PreSimulation or RunService.Stepped):Connect(Tempel.Step)
+    end
     toast("Menempel ke " .. player.Name .. "  •  gaya bisa diganti di menu")
     if updateTempelUI then updateTempelUI() end
 end
@@ -3430,6 +3449,10 @@ local function tempelTab()
     toggleButton("🎞  Animasi gerak (tidak kaku)", function() return Tempel.AnimOn end, function()
         Tempel.AnimOn = not Tempel.AnimOn
         if not Tempel.AnimOn then Tempel.StopAnim() end
+    end)
+    toggleButton("🎯  Mode presisi (nempel instan, tanpa animasi/goyang)", function() return Tempel.Precise end, function()
+        Tempel.Precise = not Tempel.Precise
+        if Tempel.Precise then Tempel.From = nil Tempel.Intro = 0 end
     end)
     toggleButton("⚡  Anti delay (prediksi gerak)", function() return Tempel.Predict end, function()
         Tempel.Predict = not Tempel.Predict
@@ -4420,7 +4443,7 @@ local function antiLagTab()
     AntiLag.OnChange = function()
         if statLabel.Parent then paintSafe() paintAuto() end
     end
-    slider("Batas FPS Auto Guard", 5, 60, AntiLag.FpsLimit, 1, function(v)
+    slider("Batas FPS Auto Guard", 5, 240, AntiLag.FpsLimit, 1, function(v)
         AntiLag.FpsLimit = v
     end)
 
@@ -6033,17 +6056,17 @@ do
     --[[ =====================================================================
          DAFTAR LAGU BAWAAN  (ISI DI SINI)
          Semua pengguna script otomatis dapat lagu-lagu ini di menu Musik.
-         Format tiap baris:   {"Judul Lagu", ID_AUDIO},
+         Format tiap baris:   {"Judul Lagu", "ID_AUDIO"},   (ID pakai tanda kutip)
          Contoh (hapus tanda -- di depan untuk mengaktifkan):
-{"About You", "74244279298033"},
-{"No One Noticed", "135609653444873"},
+             -- {"Nama Lagu Pertama", "1234567890"},
+             -- {"Nama Lagu Kedua", "9876543210"},
          Tambah baris baru di bawah garis ini, jangan lupa koma di akhir.
          Pastikan audionya PUBLIK, kalau privat tidak akan bunyi.
        ===================================================================== ]]
     local DEFAULT_SONGS = {
         -- TAMBAH LAGU DI BAWAH INI --------------------------------------
-
-
+        {"About You", "74244279298033"},
+        {"No One Noticed", "135609653444873"},
         ------------------------------------------------------------------
     }
 
@@ -6070,7 +6093,13 @@ do
     local function all()
         local out, seen = {}, {}
         for _, s in ipairs(DEFAULT_SONGS) do
-            local id = tostring(s[2] or ""):match("%d+")
+            local raw = s[2]
+            local id
+            if type(raw) == "number" then
+                id = string.format("%.0f", raw)
+            else
+                id = tostring(raw or ""):match("%d+")
+            end
             if id and not seen[id] then
                 seen[id] = true
                 out[#out + 1] = {name = tostring(s[1] or ("Lagu " .. id)), id = id, default = true}
@@ -6200,6 +6229,11 @@ do
         st.TextSize = 12
         st.TextColor3 = GREY
         M.Status = st
+
+        local ver = label("Musik v2 • bawaan: " .. #DEFAULT_SONGS .. " lagu • tambahan: " .. #M.User .. " lagu")
+        ver.Font = Enum.Font.Gotham
+        ver.TextSize = 11
+        ver.TextColor3 = GREY
 
         button("⏮  Sebelumnya", function() prevSong() end)
         button("⏯  Putar / Jeda", function()
