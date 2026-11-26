@@ -40,8 +40,8 @@ local AllowedUsernames = {
     "budakkaseppp",
     "flesss377",
     "haushh42",
-    "junvy7",
     "AYELxzy978",
+    "junvy7",
 }
 
 local AllowedUserIds = {
@@ -981,8 +981,86 @@ local function restoreSnowGround()
     snowGround = {Parts = {}, Terrain = {}, Conn = nil, Deco = nil, Token = snowGround.Token}
 end
 
+-- ===== TANAH BASAH (efek hujan): tanah digelapkan + mengkilap, hanya terlihat di layarmu =====
+local wetGround = {Parts = {}, Terrain = {}, Conn = nil, Token = 0, S = 1}
+local WET_MATS = {
+    [Enum.Material.Grass] = true, [Enum.Material.LeafyGrass] = true, [Enum.Material.Ground] = true,
+    [Enum.Material.Mud] = true, [Enum.Material.Sand] = true, [Enum.Material.Sandstone] = true,
+    [Enum.Material.Asphalt] = true, [Enum.Material.Pavement] = true, [Enum.Material.Cobblestone] = true,
+}
+local WET_TERRAIN = {
+    Enum.Material.Grass, Enum.Material.LeafyGrass, Enum.Material.Ground, Enum.Material.Mud,
+    Enum.Material.Sand, Enum.Material.Sandstone, Enum.Material.Rock, Enum.Material.Slate,
+    Enum.Material.Asphalt, Enum.Material.Pavement, Enum.Material.Cobblestone,
+}
+
+local function wetColor(c, s)
+    local k = 1 - 0.38 * s
+    return Color3.new(c.R * k * 0.96, c.G * k * 0.98, c.B * k)   -- gelap + sedikit kebiruan
+end
+
+local function wetifyPart(d)
+    if not d:IsA("BasePart") or d:IsA("Terrain") then return end
+    if wetGround.Parts[d] or d.Transparency > 0.9 then return end
+    if d:FindFirstChildOfClass("SurfaceAppearance") then return end
+    local flatLarge = d.Size.Y <= 6 and d.Size.X >= 20 and d.Size.Z >= 20
+    if not (WET_MATS[d.Material] or flatLarge) then return end
+    local m = d:FindFirstAncestorOfClass("Model")
+    if m and Players:GetPlayerFromCharacter(m) then return end
+    wetGround.Parts[d] = {d.Color, d.Reflectance}
+    d.Color = wetColor(d.Color, wetGround.S)
+    d.Reflectance = math.clamp(math.max(d.Reflectance, 0.06 + 0.16 * wetGround.S), 0, 0.3)
+end
+
+local function restoreWetGround()
+    wetGround.Token = wetGround.Token + 1
+    if wetGround.Conn then wetGround.Conn:Disconnect() end
+    for part, orig in pairs(wetGround.Parts) do
+        if part.Parent then
+            pcall(function()
+                part.Color = orig[1]
+                part.Reflectance = orig[2]
+            end)
+        end
+    end
+    local terrain = workspace:FindFirstChildOfClass("Terrain")
+    if terrain then
+        for mat, col in pairs(wetGround.Terrain) do
+            pcall(function() terrain:SetMaterialColor(mat, col) end)
+        end
+    end
+    wetGround = {Parts = {}, Terrain = {}, Conn = nil, Token = wetGround.Token, S = 1}
+end
+
+local function applyWetGround(strength)
+    restoreWetGround()
+    wetGround.S = strength or 1
+    local token = wetGround.Token
+    local terrain = workspace:FindFirstChildOfClass("Terrain")
+    if terrain then
+        for _, mat in ipairs(WET_TERRAIN) do
+            pcall(function()
+                local orig = terrain:GetMaterialColor(mat)
+                wetGround.Terrain[mat] = orig
+                terrain:SetMaterialColor(mat, wetColor(orig, wetGround.S))
+            end)
+        end
+    end
+    wetGround.Conn = workspace.DescendantAdded:Connect(wetifyPart)
+    task.spawn(function()
+        local n = 0
+        for _, d in ipairs(workspace:GetDescendants()) do
+            if wetGround.Token ~= token then return end
+            wetifyPart(d)
+            n = n + 1
+            if n % 1500 == 0 then task.wait() end
+        end
+    end)
+end
+
 local function stopWeather()
     restoreSnowGround()
+    restoreWetGround()
     if weather.Conn then weather.Conn:Disconnect() end
     if weather.Part then pcall(function() weather.Part:Destroy() end) end
     if weather.Bars then pcall(function() weather.Bars:Destroy() end) end
@@ -1305,6 +1383,7 @@ GraphicsPresets.Gerimis = function()
     addFx("ColorCorrectionEffect", "Gerimis", {TintColor = Color3.fromRGB(210, 222, 235),
         Saturation = -0.18, Contrast = 0.05})
     setClouds(0.7, 0.55, Color3.fromRGB(200, 206, 214))
+    applyWetGround(0.6)
     startWeather({Size = Vector3.new(70, 1, 70), Height = 22, Count = 2, Props = rainProps(55, 45, 60, 0.35, 0.55)})
 end
 
@@ -1320,6 +1399,7 @@ GraphicsPresets.HujanDeras = function()
     addFx("ColorCorrectionEffect", "HujanDeras", {TintColor = Color3.fromRGB(190, 203, 220),
         Saturation = -0.3, Contrast = 0.12})
     setClouds(0.95, 0.9, Color3.fromRGB(120, 128, 140))
+    applyWetGround(1.0)
     startWeather({Size = Vector3.new(80, 1, 80), Height = 22, Count = 4, Props = rainProps(400, 70, 90, 0.45, 0.45)})
 end
 
@@ -1335,6 +1415,7 @@ GraphicsPresets.HujanKabut = function()
     addFx("ColorCorrectionEffect", "HujanKabut", {TintColor = Color3.fromRGB(175, 190, 205),
         Saturation = -0.35, Contrast = 0.08})
     setClouds(0.95, 0.9, Color3.fromRGB(125, 133, 145))
+    applyWetGround(1.0)
     startWeather({Size = Vector3.new(80, 1, 80), Height = 22, Count = 4, Props = rainProps(400, 70, 90, 0.45, 0.5)})
 end
 
@@ -1416,6 +1497,7 @@ GraphicsPresets.CinematicGalau = function()
     setClouds(0.95, 0.85, Color3.fromRGB(90, 100, 118))
     setQuality(21)
     startLetterbox(0.12)
+    applyWetGround(0.9)
     startWeather({Size = Vector3.new(80, 1, 80), Height = 22, Count = 3, Props = rainProps(250, 60, 80, 0.4, 0.45)})
 end
 
@@ -1737,6 +1819,7 @@ local LimitedPresets = {
 
 local LimitedActive = {}
 local LimitedConfig = {}
+Inv.LSync = {Send = false, View = true}
 local selectedLimited = LimitedPresets[1].Name
 local function defaultLimitedConfig()
     return {Scale=100, X=0, Y=0, Z=0, RX=0, RY=0, RZ=0, Effects=true}
@@ -2154,9 +2237,17 @@ local function attachLimitedItem(item)
 end
 
 local function limitedItemTab()
+    local LSync = Inv.LSync
     clearContent()
     label("LIMITED ITEM VISUAL")
-    label("Preview kosmetik lokal - hanya terlihat di client kamu.")
+    label("Preview kosmetik. Aktifkan Sinkron supaya terlihat oleh pengguna script ini lainnya.")
+    toggleButton("🌐  Sinkron: kirim item saya ke pengguna lain", function() return LSync.Send end, function()
+        LSync.SetSend(not LSync.Send)
+        notify(LSync.Send and "Sinkron ON: item dikirim lewat 1 baris kode di chat" or "Sinkron OFF")
+    end)
+    toggleButton("👁  Lihat item pengguna script lain", function() return LSync.View end, function()
+        LSync.SetView(not LSync.View)
+    end)
     label("⚡ TEMPEL ASSET ID LALU GENERATE")
     local idBox = textbox("Tempel Asset ID atau link katalog")
     idBox:GetPropertyChangedSignal("Text"):Connect(function()
@@ -2269,6 +2360,270 @@ local function limitedItemTab()
         end
         applyLimitedTransform(selectedLimited)
         limitedItemTab()
+    end)
+end
+
+--====================================
+-- LIMITED SYNC: dilihat sesama pengguna script ini
+-- Cara kerja: item yang kamu pasang dikirim sebagai 1 baris kode singkat
+-- "[DUI] ..." di chat. Pengguna script lain otomatis menyembunyikan baris itu
+-- dan menampilkan item di karaktermu. Pemain tanpa script melihat baris kode
+-- itu di chat dan TIDAK melihat itemnya.
+--====================================
+do
+    local LSync = Inv.LSync
+    local TextChatService = game:GetService("TextChatService")
+    local TAG = "[DUI] "
+    local EMPTY = TAG .. "-"
+    local B36 = "0123456789abcdefghijklmnopqrstuvwxyz"
+    local function toB36(n)
+        n = math.floor(n)
+        if n <= 0 then return "0" end
+        local s = ""
+        while n > 0 do
+            local r = n % 36
+            s = B36:sub(r + 1, r + 1) .. s
+            n = (n - r) / 36
+        end
+        return s
+    end
+    local function fromB36(s)
+        local n = 0
+        for c in s:gmatch(".") do
+            local i = B36:find(c, 1, true)
+            if not i then return nil end
+            n = n * 36 + (i - 1)
+        end
+        return n
+    end
+
+    ---------------- KIRIM ----------------
+    local function build()
+        local names = {}
+        for name in pairs(LimitedActive) do names[#names + 1] = name end
+        table.sort(names)
+        local msg = TAG
+        local count = 0
+        for _, name in ipairs(names) do
+            local e = LimitedActive[name]
+            local it, c = e.Item, e.Config
+            if it and it.AssetId and c then
+                local part = table.concat({
+                    toB36(it.AssetId), it.Gear and 1 or 0, c.Scale or 100,
+                    c.X or 0, c.Y or 0, c.Z or 0, c.RX or 0, c.RY or 0, c.RZ or 0,
+                }, ",")
+                local nxt = msg .. (count > 0 and "." or "") .. part
+                if #nxt > 190 then break end   -- batas panjang chat
+                msg, count = nxt, count + 1
+            end
+        end
+        return count > 0 and msg or EMPTY
+    end
+
+    local function sendText(text)
+        pcall(function()
+            local ch = TextChatService:FindFirstChild("TextChannels")
+            local general = ch and ch:FindFirstChild("RBXGeneral")
+            if general then
+                general:SendAsync(text)
+            else
+                game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(text, "All")
+            end
+        end)
+    end
+
+    ---------------- TERIMA & TAMPILKAN ----------------
+    local Remote = {}   -- [UserId] = {list=, models={}, token=0, conn=}
+
+    local function parse(text)
+        if type(text) ~= "string" or text:sub(1, #TAG) ~= TAG then return nil end
+        local body = text:sub(#TAG + 1)
+        local list = {}
+        if body == "-" then return list end
+        for item in body:gmatch("[^%.]+") do
+            local f = {}
+            for v in item:gmatch("[^,]+") do f[#f + 1] = v end
+            local id = fromB36(f[1] or "")
+            if id and #f >= 9 then
+                list[#list + 1] = {
+                    id = id, gear = f[2] == "1",
+                    scale = math.clamp(tonumber(f[3]) or 100, 20, 300),
+                    x = math.clamp(tonumber(f[4]) or 0, -300, 300),
+                    y = math.clamp(tonumber(f[5]) or 0, -300, 300),
+                    z = math.clamp(tonumber(f[6]) or 0, -300, 300),
+                    rx = math.clamp(tonumber(f[7]) or 0, -180, 180),
+                    ry = math.clamp(tonumber(f[8]) or 0, -180, 180),
+                    rz = math.clamp(tonumber(f[9]) or 0, -180, 180),
+                }
+            end
+            if #list >= 4 then break end
+        end
+        return list
+    end
+
+    local function clearRemote(uid)
+        local r = Remote[uid]
+        if not r then return end
+        r.token = (r.token or 0) + 1
+        for _, m in ipairs(r.models or {}) do pcall(function() m:Destroy() end) end
+        r.models = {}
+    end
+
+    local function buildRemoteModel(id)
+        local asset = getAssetClone(id)
+        if not asset then return nil end
+        local model = Instance.new("Model")
+        model.Name = "DiiUi_RemoteLimited"
+        local handle
+        if asset:IsA("BasePart") then
+            handle = asset
+            handle.Parent = model
+        else
+            local found = asset:FindFirstChild("Handle", true) or asset:FindFirstChildWhichIsA("BasePart", true)
+            if found then
+                handle = found:Clone()
+                handle.Parent = model
+            end
+            asset:Destroy()
+        end
+        if not handle then model:Destroy() return nil end
+        for _, d in ipairs(model:GetDescendants()) do
+            if d:IsA("Weld") or d:IsA("WeldConstraint") or d:IsA("Motor6D") or d:IsA("SurfaceGui")
+            or d:IsA("BillboardGui") or d:IsA("Beam") or d:IsA("Trail")
+            or d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Sound") or d:IsA("TouchTransmitter") then
+                d:Destroy()
+            elseif d:IsA("BasePart") then
+                d.CanCollide, d.CanTouch, d.CanQuery, d.Massless, d.Anchored = false, false, false, true, false
+            end
+        end
+        return model, handle
+    end
+
+    local function render(plr)
+        local r = Remote[plr.UserId]
+        if not r or not LSync.View then return end
+        clearRemote(plr.UserId)
+        local token = r.token
+        local char = plr.Character
+        local head = char and char:FindFirstChild("Head")
+        if not head then return end
+        for _, d in ipairs(r.list) do
+            task.spawn(function()
+                local model, handle = buildRemoteModel(d.id)
+                if not model then return end
+                if token ~= r.token or not char.Parent then model:Destroy() return end
+                local part0 = head
+                local baseC0 = CFrame.new(0, 1.3, 0)
+                if d.gear then
+                    part0 = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm") or head
+                    baseC0 = CFrame.new(0.7, -0.7, -0.8) * CFrame.Angles(math.rad(-90), 0, 0)
+                end
+                local factor = d.scale / 100
+                local mesh = handle:FindFirstChildOfClass("SpecialMesh")
+                if mesh then mesh.Scale = mesh.Scale * factor else handle.Size = handle.Size * factor end
+                local weld = Instance.new("Weld")
+                weld.Part0, weld.Part1 = part0, handle
+                weld.C0 = baseC0 * CFrame.new(d.x / 10, d.y / 10, d.z / 10)
+                    * CFrame.Angles(math.rad(d.rx), math.rad(d.ry), math.rad(d.rz))
+                weld.Parent = handle
+                model.Parent = char
+                table.insert(r.models, model)
+            end)
+        end
+    end
+
+    local function onText(text, plr)
+        if not plr or plr == LP then return end
+        local list = parse(text)
+        if not list then return end
+        local r = Remote[plr.UserId]
+        if not r then
+            r = {models = {}, token = 0}
+            Remote[plr.UserId] = r
+        end
+        r.list = list
+        if not r.conn then
+            r.conn = plr.CharacterAdded:Connect(function()
+                task.wait(1)
+                render(plr)
+            end)
+        end
+        render(plr)
+    end
+
+    -- sembunyikan baris "[DUI] ..." dari chat milik pengguna script
+    pcall(function()
+        local old = TextChatService.OnIncomingMessage
+        TextChatService.OnIncomingMessage = function(m)
+            local props = old and old(m) or nil
+            if type(m.Text) == "string" and m.Text:sub(1, #TAG) == TAG then
+                props = props or Instance.new("TextChatMessageProperties")
+                props.Text = ""
+                props.PrefixText = ""
+            end
+            return props
+        end
+    end)
+    pcall(function()
+        TextChatService.MessageReceived:Connect(function(m)
+            local src = m.TextSource
+            if src then onText(m.Text, Players:GetPlayerByUserId(src.UserId)) end
+        end)
+    end)
+    local function watch(plr)
+        if plr == LP then return end
+        plr.Chatted:Connect(function(msg) onText(msg, plr) end)
+    end
+    for _, p in ipairs(Players:GetPlayers()) do watch(p) end
+    Players.PlayerAdded:Connect(function(p)
+        watch(p)
+        -- beri tahu pemain baru item apa yang sedang kamu pakai
+        if LSync.Send and LSync.LastSent and LSync.LastSent ~= EMPTY then
+            task.delay(8, function() sendText(LSync.LastSent) end)
+        end
+    end)
+    Players.PlayerRemoving:Connect(function(p)
+        clearRemote(p.UserId)
+        local r = Remote[p.UserId]
+        if r and r.conn then r.conn:Disconnect() end
+        Remote[p.UserId] = nil
+    end)
+
+    -- pengatur kirim: kirim hanya kalau perubahan sudah stabil (hindari spam chat)
+    LSync.LastSent, LSync.LastTime = EMPTY, 0
+    LSync.SetSend = function(on)
+        LSync.Send = on
+        if on then LSync.LastSent = EMPTY end
+    end
+    LSync.SetView = function(on)
+        LSync.View = on
+        for uid, r in pairs(Remote) do
+            if on then
+                local plr = Players:GetPlayerByUserId(uid)
+                if plr then render(plr) end
+            else
+                clearRemote(uid)
+            end
+        end
+    end
+    task.spawn(function()
+        local pending, stable = nil, 0
+        while true do
+            task.wait(3)
+            if LSync.Send then
+                local msg = build()
+                if msg ~= LSync.LastSent then
+                    if msg == pending then stable += 1 else pending, stable = msg, 1 end
+                    if stable >= 2 and os.clock() - LSync.LastTime > 6 then
+                        LSync.LastSent, LSync.LastTime = msg, os.clock()
+                        pending, stable = nil, 0
+                        sendText(msg)
+                    end
+                else
+                    pending, stable = nil, 0
+                end
+            end
+        end
     end)
 end
 
@@ -3425,6 +3780,8 @@ Tempel.StartCarry = function(player)
     toast("Menggendong " .. player.Name .. "  (terlihat di layarmu saja)")
 end
 
+Inv.Tempel, Inv.toast, Inv.dn = Tempel, toast, dn
+
 updateTempelUI = function()
     local ui = tempelUI
     if not (ui.status and ui.status.Parent) then return end
@@ -3446,12 +3803,12 @@ end
 local function tempelTab()
     clearContent()
     tempelUI = {cards = {}, subs = {}}
-    label("🎒 TEMPEL / BACKPACK V3")
+    label("🎯 TEMPEL")
     toggleButton("🎞  Animasi gerak (tidak kaku)", function() return Tempel.AnimOn end, function()
         Tempel.AnimOn = not Tempel.AnimOn
         if not Tempel.AnimOn then Tempel.StopAnim() end
     end)
-    toggleButton("🎯  Mode presisi (nempel instan, tanpa animasi/goyang)", function() return Tempel.Precise end, function()
+    toggleButton("🎯  No Delay (nempel instan, tanpa animasi/goyang)", function() return Tempel.Precise end, function()
         Tempel.Precise = not Tempel.Precise
         if Tempel.Precise then Tempel.From = nil Tempel.Intro = 0 end
     end)
@@ -4446,6 +4803,26 @@ local function antiLagTab()
     end
     slider("Batas FPS Auto Guard", 5, 240, AntiLag.FpsLimit, 1, function(v)
         AntiLag.FpsLimit = v
+    end)
+
+    label("⚡ UNLOCK FPS (buka batas FPS game)")
+    local fpsCap = 240
+    slider("FPS Cap", 30, 240, fpsCap, 10, function(v) fpsCap = v end)
+    button("⚡  Terapkan FPS Cap", function()
+        if setfpscap then
+            setfpscap(fpsCap)
+            toast("FPS cap: " .. fpsCap)
+        else
+            toast("Executor tidak mendukung setfpscap")
+        end
+    end)
+    button("♾  Tanpa batas (uncapped)", function()
+        if setfpscap then
+            setfpscap(0)
+            toast("FPS tanpa batas")
+        else
+            toast("Executor tidak mendukung setfpscap")
+        end
     end)
 
     toggleButton("🌊  Anti Flood (spam part / efek)",
@@ -6456,129 +6833,306 @@ do
 end
 
 --====================================
--- TELEPORT VOID & TANPA BATAS
---  Void  : platform aman di langit jauh dari map (bisa kembali ke posisi awal)
---  Koordinat : teleport ke X Y Z bebas
---  Click TP  : tool, ketuk/klik mana saja di map untuk pindah (menembus
---              tembok/pembatas tak terlihat). Catatan: anti-teleport di
---              server (kalau ada) tetap bisa mengembalikan/membunuhmu.
+-- TAMBAHAN V3.8: CARRY, JALAN DI ATAS AIR, TARGET (chat / emote / cek akun)
+-- (menu Teleport Void sudah dihapus)
 --====================================
 do
-    local V = {Height = 5000, Return = nil, Platform = nil, ClickTool = nil}
+    local HttpService = game:GetService("HttpService")
+    local TextChatService = game:GetService("TextChatService")
+    local Tempel, toast, dn = Inv.Tempel, Inv.toast, Inv.dn
 
-    local function hrpNow()
-        local c = LP.Character
-        return c and c:FindFirstChild("HumanoidRootPart")
-    end
-    local function tpTo(pos)
-        local c = LP.Character
-        local hrp = hrpNow()
-        if not hrp then return false end
-        c:PivotTo(CFrame.new(pos))
-        hrp.AssemblyLinearVelocity = Vector3.zero
-        return true
+    local function setSmall(l)
+        l.Font = Enum.Font.Gotham
+        l.TextSize = 12
+        l.TextColor3 = GREY
+        return l
     end
 
-    local function giveClickTool()
-        if V.ClickTool and V.ClickTool.Parent then return false end
-        local tool = Instance.new("Tool")
-        tool.Name = "Click TP"
-        tool.RequiresHandle = false
-        tool.CanBeDropped = false
-        tool.Activated:Connect(function()
-            local m = LP:GetMouse()
-            if m and m.Hit then tpTo(m.Hit.Position + Vector3.new(0, 3.5, 0)) end
-        end)
-        tool.Parent = LP:FindFirstChildOfClass("Backpack") or LP:WaitForChild("Backpack")
-        V.ClickTool = tool
-        return true
-    end
-
-    Inv.voidTab = function()
+    ------------------------------------------------
+    -- 🤲 CARRY (menu sendiri)
+    ------------------------------------------------
+    Inv.carryTab = function()
         clearContent()
-        label("🌌 TELEPORT VOID & TANPA BATAS")
-        local status = label("Void = platform aman di langit, jauh dari map.")
-        status.Font = Enum.Font.Gotham
-        status.TextSize = 12
-        status.TextColor3 = GREY
-        local function say(t)
-            if status and status.Parent then status.Text = t end
+        label("🤲 CARRY / GENDONG")
+        local cur = Tempel.Carry.Target
+        setSmall(label(cur and ("Sedang menggendong: " .. dn(cur)) or "Belum menggendong siapa pun. Terlihat di layarmu saja."))
+        local n = 0
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP then
+                n += 1
+                button("🤲  Gendong " .. dn(p), function()
+                    Tempel.StartCarry(p)
+                    Inv.carryTab()
+                end)
+            end
         end
-
-        slider("Ketinggian void", 500, 50000, V.Height, 100, function(v)
-            V.Height = v
-        end, function(v) return tostring(math.floor(v)) .. " studs" end)
-
-        button("🌌  Teleport ke Void (platform aman)", function()
-            local hrp = hrpNow()
-            if not hrp then say("Karakter belum tersedia.") return end
-            if not V.Return then V.Return = hrp.CFrame end
-            if V.Platform then V.Platform:Destroy() end
-            local plat = Instance.new("Part")
-            plat.Name = "DiiUiVoidPlatform"
-            plat.Anchored = true
-            plat.Size = Vector3.new(300, 2, 300)
-            plat.Position = Vector3.new(0, V.Height, 0)
-            plat.Material = Enum.Material.Neon
-            plat.Color = Color3.fromRGB(40, 40, 70)
-            plat.Transparency = 0.4
-            plat.Parent = workspace
-            V.Platform = plat
-            tpTo(plat.Position + Vector3.new(0, 4, 0))
-            say("Kamu di void. Tekan Kembali untuk pulang.")
+        if n == 0 then label("Belum ada pemain lain di server.") end
+        button("⬇  Turunkan gendongan", function()
+            Tempel.StopCarry("Gendongan diturunkan")
+            Inv.carryTab()
         end)
+        button("🔄  Refresh daftar", Inv.carryTab)
+    end
 
-        button("↩  Kembali ke posisi sebelum void", function()
-            if V.Return then
-                local c = LP.Character
-                if c then c:PivotTo(V.Return) end
-                local hrp = hrpNow()
-                if hrp then hrp.AssemblyLinearVelocity = Vector3.zero end
-                V.Return = nil
-                if V.Platform then V.Platform:Destroy() V.Platform = nil end
-                say("Kembali ke posisi awal.")
+    ------------------------------------------------
+    -- 🌊 JALAN DI ATAS AIR (client-side)
+    ------------------------------------------------
+    local Water = {On = false, Conn = nil, Part = nil}
+    local function setWater(on)
+        Water.On = on
+        if Water.Conn then Water.Conn:Disconnect() Water.Conn = nil end
+        if Water.Part then Water.Part:Destroy() Water.Part = nil end
+        if not on then return end
+        local part = Instance.new("Part")
+        part.Name = "DiiUiWaterWalk"
+        part.Anchored = true
+        part.CanCollide = true
+        part.Transparency = 1
+        part.Size = Vector3.new(14, 1, 14)
+        part.CFrame = CFrame.new(0, -5000, 0)
+        part.Parent = workspace
+        Water.Part = part
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Exclude
+        params.IgnoreWater = false
+        Water.Conn = RunService.Heartbeat:Connect(function()
+            local char = LP.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            params.FilterDescendantsInstances = {char, part}
+            local res = workspace:Raycast(hrp.Position + Vector3.new(0, 3, 0), Vector3.new(0, -40, 0), params)
+            if res and res.Material == Enum.Material.Water then
+                part.CFrame = CFrame.new(hrp.Position.X, res.Position.Y - 0.5, hrp.Position.Z)
             else
-                say("Tidak ada posisi yang tersimpan.")
-            end
-        end)
-
-        label("🖱 CLICK TP (ke mana saja)")
-        button("🖱  Ambil tool Click TP", function()
-            if giveClickTool() then
-                say("Tool 'Click TP' ada di tas. Equip lalu ketuk lokasi.")
-            else
-                say("Tool sudah ada di tasmu.")
-            end
-        end)
-
-        label("🧭 KOORDINAT BEBAS")
-        local bx = textbox("X")
-        local by = textbox("Y")
-        local bz = textbox("Z")
-        button("🧭  Teleport ke koordinat", function()
-            local x, y, z = tonumber(bx.Text), tonumber(by.Text), tonumber(bz.Text)
-            if not (x and y and z) then say("Isi X, Y, Z dengan angka.") return end
-            if tpTo(Vector3.new(x, y, z)) then
-                say(string.format("Teleport ke %.0f, %.0f, %.0f", x, y, z))
-            else
-                say("Karakter belum tersedia.")
-            end
-        end)
-        button("📋  Salin koordinat posisiku", function()
-            local hrp = hrpNow()
-            if not hrp then say("Karakter belum tersedia.") return end
-            local p = hrp.Position
-            local text = string.format("%.1f, %.1f, %.1f", p.X, p.Y, p.Z)
-            if setclipboard then
-                setclipboard(text)
-                bx.Text, by.Text, bz.Text = string.format("%.1f", p.X), string.format("%.1f", p.Y), string.format("%.1f", p.Z)
-                say("Disalin: " .. text)
-            else
-                say("Posisimu: " .. text)
+                part.CFrame = CFrame.new(0, -5000, 0)
             end
         end)
     end
+
+    Inv.waterTab = function()
+        clearContent()
+        label("🌊 JALAN DI ATAS AIR")
+        button(Water.On and "Jalan di Air: ON ✅  (tap untuk matikan)" or "Jalan di Air: OFF  (tap untuk aktifkan)", function()
+            setWater(not Water.On)
+            Inv.waterTab()
+        end)
+        setSmall(label("Membuat pijakan tak terlihat di permukaan air Terrain (client-side). Air berupa Part biasa tidak diubah."))
+    end
+
+    ------------------------------------------------
+    -- 🌐 HTTP util untuk cek akun
+    ------------------------------------------------
+    local function httpGetJson(url)
+        local req = (syn and syn.request) or http_request or request or (http and http.request)
+        if not req then return nil, "executor tidak punya fungsi request" end
+        local ok, res = pcall(req, {Url = url, Method = "GET"})
+        if not ok or not res then return nil, "request gagal" end
+        if res.StatusCode and res.StatusCode ~= 200 then return nil, "HTTP " .. tostring(res.StatusCode) end
+        local ok2, data = pcall(function() return HttpService:JSONDecode(res.Body) end)
+        if not ok2 then return nil, "respon tidak valid" end
+        return data
+    end
+
+    ------------------------------------------------
+    -- 🎯 TARGET: chat / emote / cek akun
+    ------------------------------------------------
+    local T = {
+        Player = nil,
+        ChatOn = false, ChatConn = nil, LastMsg = "", LastAt = 0,
+        EmoteOn = false, EmoteToken = 0, Mine = nil, CurId = nil,
+    }
+
+    local function sendChat(msg)
+        if os.clock() - T.LastAt < 0.4 then return end
+        T.LastAt = os.clock()
+        if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+            local chans = TextChatService:FindFirstChild("TextChannels")
+            local ch = chans and (chans:FindFirstChild("RBXGeneral") or chans:FindFirstChildWhichIsA("TextChannel"))
+            if ch then pcall(function() ch:SendAsync(msg) end) return end
+        end
+        local ev = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+        local say = ev and ev:FindFirstChild("SayMessageRequest")
+        if say then pcall(function() say:FireServer(msg, "All") end) end
+    end
+
+    local function stopChat()
+        T.ChatOn = false
+        if T.ChatConn then T.ChatConn:Disconnect() T.ChatConn = nil end
+    end
+    local function startChat()
+        stopChat()
+        local p = T.Player
+        if not p then return end
+        T.ChatOn = true
+        if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+            T.ChatConn = TextChatService.MessageReceived:Connect(function(m)
+                local src = m.TextSource
+                if src and src.UserId == p.UserId and m.Text and m.Text ~= "" then
+                    sendChat(m.Text)
+                end
+            end)
+        else
+            T.ChatConn = p.Chatted:Connect(function(msg) sendChat(msg) end)
+        end
+    end
+
+    local function stopEmote()
+        T.EmoteOn = false
+        T.EmoteToken += 1
+        if T.Mine then pcall(function() T.Mine:Stop() end) T.Mine = nil end
+        T.CurId = nil
+    end
+    local function isEmoteTrack(tr)
+        if not (tr and tr.Animation and tr.IsPlaying) then return false end
+        local pr = tr.Priority
+        if pr ~= Enum.AnimationPriority.Action and pr ~= Enum.AnimationPriority.Action2
+        and pr ~= Enum.AnimationPriority.Action3 and pr ~= Enum.AnimationPriority.Action4 then
+            return false
+        end
+        if tostring(tr.Animation.Name):lower():find("tool") then return false end
+        return tr.Animation.AnimationId ~= ""
+    end
+    local function startEmote()
+        stopEmote()
+        local p = T.Player
+        if not p then return end
+        T.EmoteOn = true
+        local token = T.EmoteToken
+        task.spawn(function()
+            while T.EmoteOn and T.EmoteToken == token do
+                if not (p.Parent == Players) then stopEmote() break end
+                local tHum = p.Character and p.Character:FindFirstChildOfClass("Humanoid")
+                local tAnim = tHum and tHum:FindFirstChildOfClass("Animator")
+                local myHum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+                if tAnim and myHum then
+                    local myAnim = myHum:FindFirstChildOfClass("Animator") or Instance.new("Animator", myHum)
+                    local found
+                    for _, tr in ipairs(tAnim:GetPlayingAnimationTracks()) do
+                        if isEmoteTrack(tr) then found = tr break end
+                    end
+                    if found then
+                        local id = found.Animation.AnimationId
+                        if id ~= T.CurId or not T.Mine then
+                            if T.Mine then pcall(function() T.Mine:Stop() end) end
+                            local a = Instance.new("Animation")
+                            a.AnimationId = id
+                            local ok, tr = pcall(function() return myAnim:LoadAnimation(a) end)
+                            if ok and tr then
+                                tr.Priority = Enum.AnimationPriority.Action4
+                                tr.Looped = found.Looped
+                                tr:Play()
+                                tr.TimePosition = found.TimePosition
+                                T.Mine, T.CurId = tr, id
+                            end
+                        elseif T.Mine and math.abs(T.Mine.TimePosition - found.TimePosition) > 0.35 then
+                            T.Mine.TimePosition = found.TimePosition
+                        end
+                    elseif T.Mine then
+                        pcall(function() T.Mine:Stop() end)
+                        T.Mine, T.CurId = nil, nil
+                    end
+                end
+                task.wait(0.15)
+            end
+        end)
+    end
+
+    local function ageText(days)
+        local y = math.floor(days / 365)
+        local m = math.floor((days % 365) / 30)
+        local d = (days % 365) % 30
+        return string.format("%d hari  (±%d thn %d bln %d hr)", days, y, m, d)
+    end
+
+    local function checkAccount(p, setLine)
+        setLine(1, "📅 Umur akun: " .. ageText(p.AccountAge))
+        setLine(2, "👗 Avatar tersimpan: memuat...")
+        setLine(3, "👁 Visibilitas inventory: memuat...")
+        task.spawn(function()
+            local data, err = httpGetJson(("https://avatar.roblox.com/v1/users/%d/outfits?page=1&itemsPerPage=50&isEditable=true"):format(p.UserId))
+            if data and data.data then
+                local names = {}
+                for i, o in ipairs(data.data) do
+                    if i > 8 then break end
+                    table.insert(names, tostring(o.name))
+                end
+                local total = #data.data
+                local extra = total > 8 and (" ...+" .. (total - 8)) or ""
+                setLine(2, ("👗 Avatar tersimpan: %d outfit%s"):format(total,
+                    total > 0 and ("\n   " .. table.concat(names, ", ") .. extra) or ""))
+            else
+                setLine(2, "👗 Avatar tersimpan: gagal (" .. tostring(err) .. ")")
+            end
+        end)
+        task.spawn(function()
+            local data, err = httpGetJson(("https://inventory.roblox.com/v1/users/%d/can-view-inventory"):format(p.UserId))
+            if data and data.canView ~= nil then
+                setLine(3, "👁 Visibilitas inventory: " .. (data.canView and "ON ✅ (publik)" or "OFF 🔒 (privat)"))
+            else
+                setLine(3, "👁 Visibilitas inventory: gagal (" .. tostring(err) .. ")")
+            end
+        end)
+    end
+
+    Inv.targetTab = function()
+        clearContent()
+        label("🎯 TARGET")
+        local p = T.Player
+        if p and p.Parent ~= Players then
+            stopChat() stopEmote() T.Player = nil p = nil
+        end
+        setSmall(label(p and ("Target: " .. dn(p)) or "Pilih username target dari daftar server:"))
+
+        for _, pl in ipairs(Players:GetPlayers()) do
+            if pl ~= LP then
+                local sel = (pl == p)
+                button((sel and "✅  " or "👤  ") .. dn(pl), function()
+                    if T.Player ~= pl then
+                        stopChat() stopEmote()
+                        T.Player = pl
+                    end
+                    Inv.targetTab()
+                end)
+            end
+        end
+        button("🔄  Refresh daftar", Inv.targetTab)
+        if not p then return end
+
+        label("💬 THRU CHAT TARGET")
+        button(T.ChatOn and "Ikuti chat target: ON ✅  (tap matikan)" or "Ikuti chat target: OFF  (tap aktifkan)", function()
+            if T.ChatOn then stopChat() else startChat() end
+            Inv.targetTab()
+        end)
+        setSmall(label("Setiap target mengetik, kamu otomatis mengirim kalimat yang sama."))
+
+        label("🎭 EMOTE TARGET")
+        button(T.EmoteOn and "Tiru emote target: ON ✅  (tap matikan)" or "Tiru emote target: OFF  (tap aktifkan)", function()
+            if T.EmoteOn then stopEmote() else startEmote() end
+            Inv.targetTab()
+        end)
+        setSmall(label("Saat target memainkan emote, karaktermu memainkan emote yang sama."))
+
+        label("🔎 CEK AKUN TARGET")
+        local lines = {}
+        for i = 1, 3 do lines[i] = setSmall(label("")) end
+        local function setLine(i, txt)
+            if lines[i] and lines[i].Parent then lines[i].Text = txt end
+        end
+        button("🔎  Cek umur, avatar tersimpan & visibilitas", function()
+            checkAccount(p, setLine)
+        end)
+        button("🔎  Cek akun saya sendiri", function()
+            checkAccount(LP, setLine)
+        end)
+    end
+
+    Players.PlayerRemoving:Connect(function(pl)
+        if T.Player == pl then
+            stopChat() stopEmote() T.Player = nil
+        end
+    end)
 end
+
 
 -- CREATE TABS
 makeTab("⌂  Home", homeTab)
@@ -6592,11 +7146,13 @@ makeTab("◎  Free Cam", freeCamTab)
 makeTab("🎬  Cinematic Cam", Inv.cinemaTab)
 makeTab("🕊  Fly / NoClip / Speed / Tornado", Inv.movementTab)
 makeTab("💥  Fling", Inv.flingTab)
-makeTab("🌌  Teleport Void", Inv.voidTab)
+makeTab("🤲  Carry", Inv.carryTab)
+makeTab("🌊  Jalan di Air", Inv.waterTab)
+makeTab("🎯  Target", Inv.targetTab)
 makeTab("🛡  Anti Lag / Crash", antiLagTab)
 makeTab("🛡  Anti AFK / Kick / Mic", Inv.antiTab)
 makeTab("🛒  Grobak", cartTab)
-makeTab("🎒  Tempel / Backpack", tempelTab)
+makeTab("🎯  Tempel", tempelTab)
 makeTab("👤  Salin Avatar", avatarTab)
 makeTab("🪙  Coin Hutan", coinHutanTab)
 makeTab("🎭  Emote", Inv.emoteTab)
@@ -6606,4 +7162,4 @@ makeTab("🌐  Server", Inv.serverTab)
 
 homeTab()
 
-print("DiiUi HUB V3.7 loaded successfully!")
+print("DiiUi HUB V3.8 loaded successfully!")
