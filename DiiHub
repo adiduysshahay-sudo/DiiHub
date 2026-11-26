@@ -34,14 +34,14 @@ local AllowedUsernames = {
     "Hantu_belau2",
     "adefabian7",
     "junvy7",
+    "rridho_66",
+    "nasss_TH",
+    "bbymloo",
     "ell4voraa",
     "budakkaseppp",
     "flesss377",
     "haushh42",
     "AYELxzy978",
-    "bbymloo",
-    "nasss_TH",
-    "rridho_66",
 }
 
 local AllowedUserIds = {
@@ -6023,6 +6023,528 @@ do
     end
 end
 
+--====================================
+-- MUSIK (playlist + share ID, mirip pemutar lagu)
+-- Catatan: suara diputar lokal, hanya kamu yang dengar. "Share" = bagikan
+-- ID/playlist lewat clipboard atau chat, lalu temanmu memutar di menunya.
+-- Banyak audio Roblox kini privat; hanya audio publik yang bisa diputar.
+--====================================
+do
+    --[[ =====================================================================
+         DAFTAR LAGU BAWAAN  (ISI DI SINI)
+         Semua pengguna script otomatis dapat lagu-lagu ini di menu Musik.
+         Format tiap baris:   {"Judul Lagu", ID_AUDIO},
+         Contoh (hapus tanda -- di depan untuk mengaktifkan):
+              {"About you", 74244279298033},
+              {"NO ONE NOTICED", 135609653444873},
+         Tambah baris baru di bawah garis ini, jangan lupa koma di akhir.
+         Pastikan audionya PUBLIK, kalau privat tidak akan bunyi.
+       ===================================================================== ]]
+    local DEFAULT_SONGS = {
+        -- TAMBAH LAGU DI BAWAH INI --------------------------------------
+
+
+        ------------------------------------------------------------------
+    }
+
+    local HttpService = game:GetService("HttpService")
+    local SoundService = game:GetService("SoundService")
+    local TextChatService = game:GetService("TextChatService")
+    local FILE = "DiiUi_Playlist.json"
+    local M = {User = {}, Index = 0, Loop = false, Shuffle = false, Volume = 0.5, Msg = "Tambah lagu lewat ID audio.", Status = nil, Token = 0}
+
+    pcall(function()
+        if isfile and readfile and isfile(FILE) then
+            local d = HttpService:JSONDecode(readfile(FILE))
+            if type(d) == "table" then M.User = d end
+        end
+    end)
+    local function persist()
+        pcall(function()
+            if writefile then writefile(FILE, HttpService:JSONEncode(M.User)) end
+        end)
+    end
+
+
+    -- gabungan: lagu bawaan (DEFAULT_SONGS) + lagu tambahan pengguna
+    local function all()
+        local out, seen = {}, {}
+        for _, s in ipairs(DEFAULT_SONGS) do
+            local id = tostring(s[2] or ""):match("%d+")
+            if id and not seen[id] then
+                seen[id] = true
+                out[#out + 1] = {name = tostring(s[1] or ("Lagu " .. id)), id = id, default = true}
+            end
+        end
+        for _, s in ipairs(M.User) do
+            if not seen[s.id] then
+                seen[s.id] = true
+                out[#out + 1] = s
+            end
+        end
+        return out
+    end
+
+    local sound = Instance.new("Sound")
+    sound.Name = "DiiUiMusic"
+    sound.Volume = M.Volume
+    sound.Parent = SoundService
+
+    local function parseId(text)
+        return tostring(text or ""):match("%d+")
+    end
+    local function current()
+        return all()[M.Index]
+    end
+    local function fmtTime(t)
+        t = math.max(0, math.floor(t or 0))
+        return string.format("%d:%02d", t // 60, t % 60)
+    end
+
+    local function setMsg(t)
+        M.Msg = t
+    end
+
+    local function play(i)
+        local song = all()[i]
+        if not song then return end
+        M.Index = i
+        M.Token = M.Token + 1
+        local token = M.Token
+        sound:Stop()
+        sound.SoundId = "rbxassetid://" .. song.id
+        sound.Looped = M.Loop
+        sound:Play()
+        setMsg("Memuat: " .. song.name)
+        task.delay(4, function()
+            if token == M.Token and not sound.IsLoaded then
+                setMsg("Gagal memuat '" .. song.name .. "' (audio privat / ID salah). Coba lagu lain.")
+            end
+        end)
+    end
+
+    local function nextSong()
+        local n = #all()
+        if n == 0 then return end
+        local i
+        if M.Shuffle and n > 1 then
+            repeat i = math.random(n) until i ~= M.Index
+        else
+            i = (M.Index % n) + 1
+        end
+        play(i)
+    end
+    local function prevSong()
+        local n = #all()
+        if n == 0 then return end
+        play(((M.Index - 2) % n) + 1)
+    end
+
+    sound.Ended:Connect(function()
+        if not sound.Looped then nextSong() end
+    end)
+
+    -- update teks status tiap 0,5 detik
+    task.spawn(function()
+        while true do
+            task.wait(0.5)
+            local lbl = M.Status
+            if lbl and lbl.Parent then
+                local song = current()
+                if song and sound.IsPlaying then
+                    lbl.Text = "▶ " .. song.name .. "  " .. fmtTime(sound.TimePosition) .. " / " .. fmtTime(sound.TimeLength)
+                elseif song and sound.IsPaused then
+                    lbl.Text = "⏸ " .. song.name .. "  " .. fmtTime(sound.TimePosition)
+                else
+                    lbl.Text = M.Msg
+                end
+            end
+        end
+    end)
+
+    local function copy(text, okMsg)
+        if setclipboard then
+            setclipboard(text)
+            setMsg(okMsg)
+        else
+            setMsg("Executor tidak mendukung clipboard.")
+        end
+    end
+
+    local function sendChat(text)
+        local ok = pcall(function()
+            local ch = TextChatService:FindFirstChild("TextChannels")
+            local general = ch and ch:FindFirstChild("RBXGeneral")
+            if general then
+                general:SendAsync(text)
+            else
+                game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(text, "All")
+            end
+        end)
+        setMsg(ok and "Terkirim ke chat." or "Gagal kirim ke chat.")
+    end
+
+    local function addSong(name, id)
+        for _, s in ipairs(all()) do
+            if s.id == id then return false end
+        end
+        M.User[#M.User + 1] = {name = name, id = id}
+        return true
+    end
+
+    Inv.musicTab = function()
+        clearContent()
+        label("🎵 MUSIK")
+        local st = label(M.Msg)
+        st.Font = Enum.Font.Gotham
+        st.TextSize = 12
+        st.TextColor3 = GREY
+        M.Status = st
+
+        button("⏮  Sebelumnya", function() prevSong() end)
+        button("⏯  Putar / Jeda", function()
+            if sound.IsPlaying then
+                sound:Pause()
+            elseif sound.IsPaused then
+                sound:Resume()
+            elseif current() then
+                play(M.Index)
+            elseif #all() > 0 then
+                play(1)
+            else
+                setMsg("Playlist kosong. Tambah lagu dulu.")
+            end
+        end)
+        button("⏭  Berikutnya", function() nextSong() end)
+        button("⏹  Stop", function()
+            M.Token = M.Token + 1
+            sound:Stop()
+            setMsg("Dihentikan.")
+        end)
+
+        slider("Volume", 0, 100, math.floor(M.Volume * 100), 1, function(v)
+            M.Volume = v / 100
+            sound.Volume = M.Volume
+        end)
+        toggleButton("Ulangi lagu ini", function() return M.Loop end, function()
+            M.Loop = not M.Loop
+            sound.Looped = M.Loop
+        end)
+        toggleButton("Acak (shuffle)", function() return M.Shuffle end, function()
+            M.Shuffle = not M.Shuffle
+        end)
+
+        label("➕ TAMBAH LAGU")
+        local nameBox = textbox("Judul lagu")
+        local idBox = textbox("ID audio (angka atau rbxassetid://...)")
+        button("➕  Tambah ke playlist", function()
+            local id = parseId(idBox.Text)
+            local name = ((nameBox.Text or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+            if not id then setMsg("ID audio tidak valid.") return end
+            if name == "" then name = "Lagu " .. id end
+            if addSong(name, id) then
+                persist()
+                setMsg("Ditambahkan: " .. name)
+                Inv.musicTab()
+            else
+                setMsg("Lagu dengan ID itu sudah ada.")
+            end
+        end)
+
+        label("📥 IMPOR PLAYLIST")
+        local importBox = textbox("Tempel: Judul|ID;Judul|ID;...")
+        button("📥  Impor", function()
+            local added = 0
+            for entry in tostring(importBox.Text or ""):gmatch("[^;\n]+") do
+                local name, id = entry:match("^%s*(.-)%s*|%s*(%d+)%s*$")
+                if not id then
+                    id = parseId(entry)
+                    name = id and ("Lagu " .. id)
+                end
+                if id and addSong(name ~= "" and name or ("Lagu " .. id), id) then added = added + 1 end
+            end
+            if added > 0 then
+                persist()
+                setMsg(added .. " lagu diimpor.")
+                Inv.musicTab()
+            else
+                setMsg("Tidak ada lagu valid / semua sudah ada.")
+            end
+        end)
+
+        label("📤 BAGIKAN")
+        button("📋  Salin lagu yang diputar", function()
+            local s = current()
+            if not s then setMsg("Belum ada lagu yang dipilih.") return end
+            copy(s.name .. "|" .. s.id, "Disalin: " .. s.name .. "|" .. s.id)
+        end)
+        button("📋  Salin seluruh playlist", function()
+            local list = all()
+            if #list == 0 then setMsg("Playlist kosong.") return end
+            local parts = {}
+            for _, s in ipairs(list) do parts[#parts + 1] = s.name:gsub("[|;]", " ") .. "|" .. s.id end
+            copy(table.concat(parts, ";"), "Playlist (" .. #list .. " lagu) disalin.")
+        end)
+        button("💬  Kirim lagu yang diputar ke chat", function()
+            local s = current()
+            if not s then setMsg("Belum ada lagu yang dipilih.") return end
+            sendChat("🎵 " .. s.name .. " | ID: " .. s.id)
+        end)
+
+        local list = all()
+        label("📜 PLAYLIST (" .. #list .. ")")
+        for i, s in ipairs(list) do
+            button((i == M.Index and "▶ " or (s.default and "⭐ " or "🎵 ")) .. s.name, function() play(i) end)
+            if not s.default then
+                button("🗑  Hapus: " .. s.name, function()
+                    for k, u in ipairs(M.User) do
+                        if u.id == s.id then table.remove(M.User, k) break end
+                    end
+                    if M.Index == i then
+                        M.Token = M.Token + 1
+                        sound:Stop()
+                    end
+                    M.Index = 0
+                    persist()
+                    Inv.musicTab()
+                end)
+            end
+        end
+    end
+end
+
+--====================================
+-- FLING
+--  Memutar karaktermu dengan kecepatan tinggi lalu menempel ke target
+--  sampai target terlempar. Posisimu otomatis dikembalikan setelah selesai.
+--====================================
+do
+    local RunService = game:GetService("RunService")
+    local F = {Busy = false, Stop = false}
+
+    local function flingPlayer(target)
+        local char = LP.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local tchar = target.Character
+        local thrp = tchar and tchar:FindFirstChild("HumanoidRootPart")
+        local thum = tchar and tchar:FindFirstChildOfClass("Humanoid")
+        if not (hrp and hum and thrp and thum) then return false end
+
+        local cam = workspace.CurrentCamera
+        local origin = hrp.CFrame
+        local head = tchar:FindFirstChild("Head")
+        if head then cam.CameraSubject = head end
+
+        local spin = Instance.new("BodyAngularVelocity")
+        spin.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        spin.AngularVelocity = Vector3.new(0, 1e5, 0)
+        spin.P = math.huge
+        spin.Parent = hrp
+
+        local flung = false
+        local t0 = tick()
+        while tick() - t0 < 2.5 and not F.Stop do
+            if not (thrp.Parent and hrp.Parent and thum.Health > 0) then break end
+            if thrp.AssemblyLinearVelocity.Magnitude > 300 or thrp.Position.Y < workspace.FallenPartsDestroyHeight + 50 then
+                flung = true
+                break
+            end
+            local lead = thum.MoveDirection * math.clamp(thrp.AssemblyLinearVelocity.Magnitude / 12, 0, 6)
+            hrp.CFrame = CFrame.new(thrp.Position + lead)
+            hrp.AssemblyLinearVelocity = Vector3.new(5e4, 5e4, 5e4)
+            RunService.Heartbeat:Wait()
+        end
+
+        spin:Destroy()
+        -- kembalikan diri sendiri dengan aman (reset kecepatan beberapa frame)
+        for _ = 1, 12 do
+            if not hrp.Parent then break end
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+            hrp.CFrame = origin
+            RunService.Heartbeat:Wait()
+        end
+        cam.CameraSubject = hum
+        return flung
+    end
+
+    Inv.flingTab = function()
+        clearContent()
+        label("💥 FLING")
+        local status = label("Pilih pemain untuk di-fling.")
+        status.Font = Enum.Font.Gotham
+        status.TextSize = 12
+        status.TextColor3 = GREY
+        local function say(t)
+            if status and status.Parent then status.Text = t end
+        end
+
+        local function run(list)
+            if F.Busy then say("Masih memproses, tunggu atau tekan Stop.") return end
+            F.Busy, F.Stop = true, false
+            task.spawn(function()
+                for _, plr in ipairs(list) do
+                    if F.Stop then break end
+                    say("Fling: " .. plr.DisplayName .. "...")
+                    local ok = flingPlayer(plr)
+                    say(ok and ("Berhasil melempar " .. plr.DisplayName) or ("Gagal / target terlalu kuat: " .. plr.DisplayName))
+                    task.wait(0.4)
+                end
+                F.Busy = false
+                if F.Stop then say("Dihentikan.") end
+            end)
+        end
+
+        button("⏹  Stop", function()
+            F.Stop = true
+        end)
+        button("🔄  Refresh daftar pemain", function() Inv.flingTab() end)
+        button("💥  Fling semua pemain", function()
+            local list = {}
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= LP then list[#list + 1] = p end
+            end
+            if #list == 0 then say("Tidak ada pemain lain.") return end
+            run(list)
+        end)
+
+        label("👥 PILIH PEMAIN")
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP then
+                button("💥 " .. p.DisplayName .. " (@" .. p.Name .. ")", function()
+                    run({p})
+                end)
+            end
+        end
+    end
+end
+
+--====================================
+-- TELEPORT VOID & TANPA BATAS
+--  Void  : platform aman di langit jauh dari map (bisa kembali ke posisi awal)
+--  Koordinat : teleport ke X Y Z bebas
+--  Click TP  : tool, ketuk/klik mana saja di map untuk pindah (menembus
+--              tembok/pembatas tak terlihat). Catatan: anti-teleport di
+--              server (kalau ada) tetap bisa mengembalikan/membunuhmu.
+--====================================
+do
+    local V = {Height = 5000, Return = nil, Platform = nil, ClickTool = nil}
+
+    local function hrpNow()
+        local c = LP.Character
+        return c and c:FindFirstChild("HumanoidRootPart")
+    end
+    local function tpTo(pos)
+        local c = LP.Character
+        local hrp = hrpNow()
+        if not hrp then return false end
+        c:PivotTo(CFrame.new(pos))
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        return true
+    end
+
+    local function giveClickTool()
+        if V.ClickTool and V.ClickTool.Parent then return false end
+        local tool = Instance.new("Tool")
+        tool.Name = "Click TP"
+        tool.RequiresHandle = false
+        tool.CanBeDropped = false
+        tool.Activated:Connect(function()
+            local m = LP:GetMouse()
+            if m and m.Hit then tpTo(m.Hit.Position + Vector3.new(0, 3.5, 0)) end
+        end)
+        tool.Parent = LP:FindFirstChildOfClass("Backpack") or LP:WaitForChild("Backpack")
+        V.ClickTool = tool
+        return true
+    end
+
+    Inv.voidTab = function()
+        clearContent()
+        label("🌌 TELEPORT VOID & TANPA BATAS")
+        local status = label("Void = platform aman di langit, jauh dari map.")
+        status.Font = Enum.Font.Gotham
+        status.TextSize = 12
+        status.TextColor3 = GREY
+        local function say(t)
+            if status and status.Parent then status.Text = t end
+        end
+
+        slider("Ketinggian void", 500, 50000, V.Height, 100, function(v)
+            V.Height = v
+        end, function(v) return tostring(math.floor(v)) .. " studs" end)
+
+        button("🌌  Teleport ke Void (platform aman)", function()
+            local hrp = hrpNow()
+            if not hrp then say("Karakter belum tersedia.") return end
+            if not V.Return then V.Return = hrp.CFrame end
+            if V.Platform then V.Platform:Destroy() end
+            local plat = Instance.new("Part")
+            plat.Name = "DiiUiVoidPlatform"
+            plat.Anchored = true
+            plat.Size = Vector3.new(300, 2, 300)
+            plat.Position = Vector3.new(0, V.Height, 0)
+            plat.Material = Enum.Material.Neon
+            plat.Color = Color3.fromRGB(40, 40, 70)
+            plat.Transparency = 0.4
+            plat.Parent = workspace
+            V.Platform = plat
+            tpTo(plat.Position + Vector3.new(0, 4, 0))
+            say("Kamu di void. Tekan Kembali untuk pulang.")
+        end)
+
+        button("↩  Kembali ke posisi sebelum void", function()
+            if V.Return then
+                local c = LP.Character
+                if c then c:PivotTo(V.Return) end
+                local hrp = hrpNow()
+                if hrp then hrp.AssemblyLinearVelocity = Vector3.zero end
+                V.Return = nil
+                if V.Platform then V.Platform:Destroy() V.Platform = nil end
+                say("Kembali ke posisi awal.")
+            else
+                say("Tidak ada posisi yang tersimpan.")
+            end
+        end)
+
+        label("🖱 CLICK TP (ke mana saja)")
+        button("🖱  Ambil tool Click TP", function()
+            if giveClickTool() then
+                say("Tool 'Click TP' ada di tas. Equip lalu ketuk lokasi.")
+            else
+                say("Tool sudah ada di tasmu.")
+            end
+        end)
+
+        label("🧭 KOORDINAT BEBAS")
+        local bx = textbox("X")
+        local by = textbox("Y")
+        local bz = textbox("Z")
+        button("🧭  Teleport ke koordinat", function()
+            local x, y, z = tonumber(bx.Text), tonumber(by.Text), tonumber(bz.Text)
+            if not (x and y and z) then say("Isi X, Y, Z dengan angka.") return end
+            if tpTo(Vector3.new(x, y, z)) then
+                say(string.format("Teleport ke %.0f, %.0f, %.0f", x, y, z))
+            else
+                say("Karakter belum tersedia.")
+            end
+        end)
+        button("📋  Salin koordinat posisiku", function()
+            local hrp = hrpNow()
+            if not hrp then say("Karakter belum tersedia.") return end
+            local p = hrp.Position
+            local text = string.format("%.1f, %.1f, %.1f", p.X, p.Y, p.Z)
+            if setclipboard then
+                setclipboard(text)
+                bx.Text, by.Text, bz.Text = string.format("%.1f", p.X), string.format("%.1f", p.Y), string.format("%.1f", p.Z)
+                say("Disalin: " .. text)
+            else
+                say("Posisimu: " .. text)
+            end
+        end)
+    end
+end
+
 -- CREATE TABS
 makeTab("⌂  Home", homeTab)
 makeTab("☀  Graphics", graphicsTab)
@@ -6034,6 +6556,8 @@ makeTab("💎  Limited Items", limitedItemTab)
 makeTab("◎  Free Cam", freeCamTab)
 makeTab("🎬  Cinematic Cam", Inv.cinemaTab)
 makeTab("🕊  Fly / NoClip / Speed / Tornado", Inv.movementTab)
+makeTab("💥  Fling", Inv.flingTab)
+makeTab("🌌  Teleport Void", Inv.voidTab)
 makeTab("🛡  Anti Lag / Crash", antiLagTab)
 makeTab("🛡  Anti AFK / Kick / Mic", Inv.antiTab)
 makeTab("🛒  Grobak", cartTab)
@@ -6042,6 +6566,7 @@ makeTab("👤  Salin Avatar", avatarTab)
 makeTab("🪙  Coin Hutan", coinHutanTab)
 makeTab("🎭  Emote", Inv.emoteTab)
 makeTab("🏃  Animasi", Inv.animTab)
+makeTab("🎵  Musik", Inv.musicTab)
 makeTab("🌐  Server", Inv.serverTab)
 
 homeTab()
