@@ -6035,8 +6035,8 @@ do
          Semua pengguna script otomatis dapat lagu-lagu ini di menu Musik.
          Format tiap baris:   {"Judul Lagu", ID_AUDIO},
          Contoh (hapus tanda -- di depan untuk mengaktifkan):
-              {"About you", 74244279298033},
-              {"NO ONE NOTICED", 135609653444873},
+{"About You", "74244279298033"},
+{"No One Noticed", "135609653444873"},
          Tambah baris baru di bawah garis ini, jangan lupa koma di akhir.
          Pastikan audionya PUBLIK, kalau privat tidak akan bunyi.
        ===================================================================== ]]
