@@ -1,3 +1,7 @@
+-- DiiUi HUB | safe-run wrapper (V3.9 fix)
+-- Kalau ada error di executor mana pun, pesan error ditampilkan di layar + console (F9),
+-- jadi gampang di-screenshot dan dilaporkan ke owner.
+local __DiiUiOk, __DiiUiErr = xpcall(function()
 --==================================================
 -- DiiUi HUB V2 | REAL EXECUTOR
 -- Client-side GUI and visual utilities
@@ -36,11 +40,10 @@ local AllowedUsernames = {
     "rridho_66",
     "nasss_TH",
     "bbymloo",
+    "budakkaseppp",
     "flesss377",
     "haushh42",
-    "AYELxzy978",
     "junvy7",
-    "budakkaseppp",
 }
 
 local AllowedUserIds = {
@@ -8118,3 +8121,36 @@ makeTab("🌐  Server", Inv.serverTab)
 homeTab()
 
 print("DiiUi HUB V3.9 loaded successfully!")
+
+end, function(e)
+    return debug.traceback(tostring(e), 2)
+end)
+
+if not __DiiUiOk then
+    warn("[DiiUi HUB] ERROR SAAT LOAD:\n" .. tostring(__DiiUiErr))
+    pcall(function()
+        local exec = "unknown"
+        pcall(function() exec = (identifyexecutor and select(1, identifyexecutor())) or "unknown" end)
+        local sg = Instance.new("ScreenGui")
+        sg.Name = "DiiUiHUBError"
+        sg.ResetOnSpawn = false
+        local parent
+        pcall(function() parent = (gethui and gethui()) or game:GetService("CoreGui") end)
+        if not parent then parent = game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui") end
+        sg.Parent = parent
+        local box = Instance.new("TextLabel")
+        box.Size = UDim2.new(0.9, 0, 0, 150)
+        box.Position = UDim2.new(0.05, 0, 0.05, 0)
+        box.BackgroundColor3 = Color3.fromRGB(40, 10, 20)
+        box.TextColor3 = Color3.fromRGB(255, 220, 230)
+        box.TextWrapped = true
+        box.TextXAlignment = Enum.TextXAlignment.Left
+        box.TextYAlignment = Enum.TextYAlignment.Top
+        box.Font = Enum.Font.Code
+        box.TextSize = 13
+        box.Text = "DiiUi HUB gagal load (executor: " .. tostring(exec) .. ")\n" .. string.sub(tostring(__DiiUiErr), 1, 600)
+        box.Parent = sg
+        Instance.new("UICorner", box).CornerRadius = UDim.new(0, 8)
+        task.delay(30, function() sg:Destroy() end)
+    end)
+end
