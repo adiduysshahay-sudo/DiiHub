@@ -36,12 +36,11 @@ local AllowedUsernames = {
     "rridho_66",
     "nasss_TH",
     "bbymloo",
-    "ell4voraa",
-    "budakkaseppp",
     "flesss377",
     "haushh42",
     "AYELxzy978",
     "junvy7",
+    "budakkaseppp",
 }
 
 local AllowedUserIds = {
@@ -1187,10 +1186,13 @@ local function restoreGameBlur()
     blurSaved = {}
 end
 
+local removeXmasDeco -- diisi di bawah, dekat preset Salju
+
 local function resetLighting()
     stopWeather()
     restoreGameBlur()
     clearDiiEffects()
+    if removeXmasDeco then pcall(removeXmasDeco) end
     setLight(oldLighting)
     if atmoSaved and atmoSaved.inst and atmoSaved.inst.Parent then
         for _, k in ipairs(ATMO_PROPS) do pcall(function() atmoSaved.inst[k] = atmoSaved[k] end) end
@@ -1318,7 +1320,270 @@ GraphicsPresets.SuperCinematic = function()
     startLetterbox(0.11)
 end
 
--- Salju: salju turun + langit putih kebiruan
+--====================================
+-- DEKORASI NATAL untuk preset Salju (hanya terlihat di layarmu)
+-- Topi Santa di kepala + rusa kecil yang jalan di sampingmu + lampu kelap-kelip.
+--====================================
+local XmasDeco = {Hat = nil, Reindeer = nil, Lights = nil, Conn = nil, CharConn = nil}
+
+local function buildSantaHat()
+    local hat = Instance.new("Model")
+    hat.Name = "DiiUi_SantaHat"
+    local brim = Instance.new("Part")
+    brim.Name = "Brim"
+    brim.Shape = Enum.PartType.Cylinder
+    brim.Size = Vector3.new(0.35, 1.3, 1.3)
+    brim.Color = Color3.new(1, 1, 1)
+    brim.Material = Enum.Material.Fabric
+    brim.CanCollide, brim.CanTouch, brim.CanQuery, brim.Massless, brim.Anchored = false, false, false, true, false
+    brim.Parent = hat
+    local cone = Instance.new("Part")
+    cone.Name = "Cone"
+    cone.Shape = Enum.PartType.Block
+    local mesh = Instance.new("SpecialMesh")
+    mesh.MeshType = Enum.MeshType.FileMesh
+    mesh.MeshId = "rbxasset://fonts/cone.mesh" -- cone bawaan Roblox, tanpa perlu Asset ID luar
+    mesh.Scale = Vector3.new(1.1, 1.6, 1.1)
+    mesh.Parent = cone
+    cone.Size = Vector3.new(1, 1, 1)
+    cone.Color = Color3.fromRGB(196, 30, 40)
+    cone.Material = Enum.Material.Fabric
+    cone.CanCollide, cone.CanTouch, cone.CanQuery, cone.Massless, cone.Anchored = false, false, false, true, false
+    cone.Parent = hat
+    local pom = Instance.new("Part")
+    pom.Name = "Pom"
+    pom.Shape = Enum.PartType.Ball
+    pom.Size = Vector3.new(0.55, 0.55, 0.55)
+    pom.Color = Color3.new(1, 1, 1)
+    pom.Material = Enum.Material.Fabric
+    pom.CanCollide, pom.CanTouch, pom.CanQuery, pom.Massless, pom.Anchored = false, false, false, true, false
+    pom.Parent = hat
+    local w1 = Instance.new("Weld")
+    w1.Part0, w1.Part1 = brim, cone
+    w1.C0 = CFrame.new(0, 0.55, 0) * CFrame.Angles(math.rad(90), 0, 0)
+    w1.Parent = brim
+    local w2 = Instance.new("Weld")
+    w2.Part0, w2.Part1 = brim, pom
+    w2.C0 = CFrame.new(0, 1.6, -0.35)
+    w2.Parent = brim
+    hat.PrimaryPart = brim
+    return hat, brim
+end
+
+local function attachSantaHat(char)
+    local head = char and char:FindFirstChild("Head")
+    if not head then return nil end
+    local hat, brim = buildSantaHat()
+    local weld = Instance.new("Weld")
+    weld.Name = "DiiUi_Attach"
+    weld.Part0, weld.Part1 = head, brim
+    weld.C0 = CFrame.new(0, 0.5, 0.05) * CFrame.Angles(math.rad(-6), 0, 0)
+    weld.Parent = brim
+    hat.Parent = char
+    return hat
+end
+
+-- Rusa kecil (prosedural, tanpa Asset ID) yang berjalan mengikutimu dari belakang
+local function buildReindeer()
+    local m = Instance.new("Model")
+    m.Name = "DiiUi_Reindeer"
+    local body = Instance.new("Part")
+    body.Name = "Body"
+    body.Size = Vector3.new(1.6, 1.1, 2.2)
+    body.Shape = Enum.PartType.Block
+    body.Color = Color3.fromRGB(120, 78, 48)
+    body.Material = Enum.Material.Fabric
+    body.Anchored = true
+    body.CanCollide, body.CanTouch, body.CanQuery = false, false, false
+    body.Parent = m
+    local head = Instance.new("Part")
+    head.Name = "Head"
+    head.Size = Vector3.new(0.8, 0.8, 0.9)
+    head.Color = Color3.fromRGB(132, 88, 54)
+    head.Material = Enum.Material.Fabric
+    head.Anchored = true
+    head.CanCollide, head.CanTouch, head.CanQuery = false, false, false
+    head.Parent = m
+    local nose = Instance.new("Part")
+    nose.Name = "Nose"
+    nose.Shape = Enum.PartType.Ball
+    nose.Size = Vector3.new(0.3, 0.3, 0.3)
+    nose.Color = Color3.fromRGB(220, 30, 30)
+    nose.Material = Enum.Material.Neon
+    nose.Anchored = true
+    nose.CanCollide, nose.CanTouch, nose.CanQuery = false, false, false
+    nose.Parent = m
+    local light = Instance.new("PointLight")
+    light.Color = Color3.fromRGB(255, 60, 60)
+    light.Range = 6
+    light.Brightness = 2
+    light.Parent = nose
+    for i, side in ipairs({-1, 1}) do
+        local antler = Instance.new("Part")
+        antler.Name = "Antler" .. i
+        antler.Size = Vector3.new(0.15, 0.7, 0.15)
+        antler.Color = Color3.fromRGB(90, 60, 35)
+        antler.Material = Enum.Material.Wood
+        antler.Anchored = true
+        antler.CanCollide, antler.CanTouch, antler.CanQuery = false, false, false
+        antler.Parent = m
+        antler:SetAttribute("Side", side)
+    end
+    for i, dx in ipairs({-0.55, 0.55}) do
+        for j, dz in ipairs({-0.8, 0.8}) do
+            local leg = Instance.new("Part")
+            leg.Name = "Leg" .. i .. j
+            leg.Size = Vector3.new(0.22, 1, 0.22)
+            leg.Color = Color3.fromRGB(100, 68, 42)
+            leg.Material = Enum.Material.Fabric
+            leg.Anchored = true
+            leg.CanCollide, leg.CanTouch, leg.CanQuery = false, false, false
+            leg.Parent = m
+            leg:SetAttribute("DX", dx)
+            leg:SetAttribute("DZ", dz)
+        end
+    end
+    m.PrimaryPart = body
+    return m
+end
+
+local function spawnReindeer()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    local m = buildReindeer()
+    local startCf = root.CFrame * CFrame.new(3, 0, 4)
+    m:PivotTo(startCf)
+    m.Parent = workspace
+    return m
+end
+
+local function updateReindeer(m, t, dt)
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local body = m:FindFirstChild("Body")
+    if not (root and body) then return end
+    -- selalu mengikuti agak di belakang-samping kamu, dengan sedikit jeda biar hidup
+    local targetCf = root.CFrame * CFrame.new(3.2, 0, 3.5)
+    local cur = XmasDeco.ReindeerCF or body.CFrame
+    local alpha = 1 - math.exp(-dt * 3.2)
+    local newPos = cur.Position:Lerp(targetCf.Position, alpha)
+    local lookDir = (targetCf.Position - newPos)
+    local flat = Vector3.new(lookDir.X, 0, lookDir.Z)
+    local facing = flat.Magnitude > 0.1 and CFrame.lookAt(newPos, newPos + flat) or CFrame.new(newPos)
+    local bob = math.sin(t * 4) * 0.08
+    local finalCf = facing * CFrame.new(0, 1.6 + bob, 0)
+    XmasDeco.ReindeerCF = finalCf
+    body.CFrame = finalCf
+    local head = m:FindFirstChild("Head")
+    if head then head.CFrame = finalCf * CFrame.new(0, 0.55, -1.3) end
+    local nose = m:FindFirstChild("Nose")
+    if nose then nose.CFrame = finalCf * CFrame.new(0, 0.5, -1.75) end
+    for i = 1, 2 do
+        local a = m:FindFirstChild("Antler" .. i)
+        if a then
+            local side = a:GetAttribute("Side") or 1
+            a.CFrame = finalCf * CFrame.new(0.25 * side, 1.0, -1.3) * CFrame.Angles(math.rad(20 * side), 0, math.rad(25 * side))
+        end
+    end
+    for i = 1, 2 do
+        for j = 1, 2 do
+            local leg = m:FindFirstChild("Leg" .. i .. j)
+            if leg then
+                local dx, dz = leg:GetAttribute("DX") or 0, leg:GetAttribute("DZ") or 0
+                local step = math.sin(t * 6 + (dx + dz) * 2) * 0.15
+                leg.CFrame = finalCf * CFrame.new(dx, -0.55 + math.abs(step), dz)
+            end
+        end
+    end
+end
+-- Lampu natal kelap-kelip mengorbit pelan di atas kepalamu
+local function spawnXmasLights()
+    local holder = Instance.new("Part")
+    holder.Name = "DiiUi_XmasLightsRig"
+    holder.Size = Vector3.new(0.2, 0.2, 0.2)
+    holder.Transparency = 1
+    holder.Anchored = true
+    holder.CanCollide, holder.CanTouch, holder.CanQuery = false, false, false
+    holder.Parent = workspace
+    local colors = {
+        Color3.fromRGB(220, 40, 40), Color3.fromRGB(40, 170, 80),
+        Color3.fromRGB(255, 210, 60), Color3.fromRGB(60, 140, 230),
+    }
+    local bulbs = {}
+    for i = 1, 8 do
+        local b = Instance.new("Part")
+        b.Name = "Bulb"
+        b.Shape = Enum.PartType.Ball
+        b.Size = Vector3.new(0.22, 0.22, 0.22)
+        b.Material = Enum.Material.Neon
+        b.Color = colors[((i - 1) % #colors) + 1]
+        b.Anchored = true
+        b.CanCollide, b.CanTouch, b.CanQuery = false, false, false
+        b.Parent = holder
+        local pl = Instance.new("PointLight")
+        pl.Color = b.Color
+        pl.Range = 5
+        pl.Brightness = 1.5
+        pl.Parent = b
+        table.insert(bulbs, {Part = b, Light = pl, Offset = (i - 1) / 8 * math.pi * 2})
+    end
+    return holder, bulbs
+end
+
+local function updateXmasLights(rig, t)
+    local char = LP.Character
+    local head = char and char:FindFirstChild("Head")
+    if not (rig and head) then return end
+    for _, b in ipairs(rig.Bulbs or {}) do
+        local ang = b.Offset + t * 1.1
+        local pos = head.CFrame.Position + Vector3.new(math.cos(ang) * 1.6, 1.3 + math.sin(t * 2 + b.Offset) * 0.1, math.sin(ang) * 1.6)
+        b.Part.CFrame = CFrame.new(pos)
+        b.Light.Brightness = 1 + math.sin(t * 5 + b.Offset * 3) * 0.9
+    end
+end
+
+local function createXmasDeco()
+    removeXmasDeco()
+    if LP.Character then
+        XmasDeco.Hat = attachSantaHat(LP.Character)
+    end
+    XmasDeco.CharConn = LP.CharacterAdded:Connect(function(char)
+        task.wait(1)
+        if XmasDeco.Active then
+            pcall(function() XmasDeco.Hat = attachSantaHat(char) end)
+        end
+    end)
+    XmasDeco.Reindeer = spawnReindeer()
+    local rig, bulbs = spawnXmasLights()
+    rig.Bulbs = bulbs
+    XmasDeco.Lights = rig
+    XmasDeco.Active = true
+    local t0 = os.clock()
+    XmasDeco.Conn = RunService.Heartbeat:Connect(function(dt)
+        local t = os.clock() - t0
+        if XmasDeco.Reindeer and XmasDeco.Reindeer.Parent then
+            pcall(updateReindeer, XmasDeco.Reindeer, t, dt)
+        end
+        if XmasDeco.Lights and XmasDeco.Lights.Parent then
+            pcall(updateXmasLights, XmasDeco.Lights, t)
+        end
+    end)
+end
+
+Gui.Destroying:Connect(function() pcall(removeXmasDeco) end)
+
+removeXmasDeco = function()
+    XmasDeco.Active = false
+    if XmasDeco.Conn then XmasDeco.Conn:Disconnect() XmasDeco.Conn = nil end
+    if XmasDeco.CharConn then XmasDeco.CharConn:Disconnect() XmasDeco.CharConn = nil end
+    if XmasDeco.Hat then pcall(function() XmasDeco.Hat:Destroy() end) XmasDeco.Hat = nil end
+    if XmasDeco.Reindeer then pcall(function() XmasDeco.Reindeer:Destroy() end) XmasDeco.Reindeer = nil end
+    if XmasDeco.Lights then pcall(function() XmasDeco.Lights:Destroy() end) XmasDeco.Lights = nil end
+    XmasDeco.ReindeerCF = nil
+end
+
+-- Salju: salju turun + langit putih kebiruan + dekorasi Natal (topi, rusa, lampu)
 GraphicsPresets.Salju = function()
     setLight({ClockTime = 13, Brightness = 2.2, GlobalShadows = true, ExposureCompensation = 0.15,
         FogStart = 30, FogEnd = 650, FogColor = Color3.fromRGB(215, 225, 238),
@@ -1342,6 +1607,7 @@ GraphicsPresets.Salju = function()
         Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-40, 40),
         LightInfluence = 0.2, LightEmission = 0.3,
     }})
+    pcall(createXmasDeco)
 end
 
 -- Kemarau: terik, kering, berdebu, langit hampir tanpa awan
@@ -1517,6 +1783,40 @@ end
 end -- do graphics
 
 local Inv = {}
+
+--==========================================================================
+-- ★★★  DAFTAR MEME SOUNDBOARD — TAMBAH / EDIT SUARA DI SINI  ★★★
+-- Salin 1 baris, lalu ganti:
+--   Name = nama tombol          Icon = emoji di atas nama
+--   Id   = ANGKA Asset ID sound (contoh: Id = 1234567890)
+-- Id = 0 artinya belum diisi: tombol tetap muncul, tapi saat ditekan
+-- akan muncul pesan "Asset ID belum diisi".
+-- Builtin = 1..9 memakai suara bawaan Roblox (pasti bunyi, untuk contoh/tes):
+--   1 Oof Klasik, 2 Bass, 3 Snap, 4 Victory, 5 Kerplunk,
+--   6 Splat, 7 Tebas Pedang, 8 Ping, 9 Cipratan Air
+-- Hanya sound publik / yang punya izin akses yang bisa dimuat Roblox.
+--==========================================================================
+Inv.SoundList = {
+    -- contoh yang langsung bunyi (suara bawaan Roblox)
+    {Name = "Oof Klasik",           Icon = "😱", Builtin = 1},
+    {Name = "Bass Drop",            Icon = "🔊", Builtin = 2},
+    {Name = "Victory",              Icon = "🏆", Builtin = 4},
+    -- contoh slot meme: ISI Id dengan Asset ID sound kamu
+    {Name = "Fish Meme",            Icon = "🐟", Id = 0},
+    {Name = "Suit Cat",             Icon = "🐱", Id = 0},
+    {Name = "Shark Running",        Icon = "🦈", Id = 0},
+    {Name = "Minecraft Steve",      Icon = "⛏",  Id = 0},
+    {Name = "Ballerina Cappuccino", Icon = "☕", Id = 0},
+    {Name = "Dancing Banana",       Icon = "🍌", Id = 0},
+    {Name = "Shark Shoes",          Icon = "👟", Id = 0},
+    {Name = "Among Us Kill",        Icon = "🔪", Id = 0},
+    {Name = "Ender Pearl",          Icon = "🟣", Id = 0},
+    {Name = "Roblox Nom",           Icon = "🍴", Id = 0},
+    {Name = "Chinese Speak",        Icon = "🗣", Id = 0},
+    {Name = "Screaming Emoji",      Icon = "😵", Id = 0},
+    {Name = "Bowser",               Icon = "🐢", Id = 0},
+    -- {Name = "Nama Baru", Icon = "🎵", Id = 0},   <- salin baris ini untuk menambah
+}
 do
 -- INVISIBLE (diri sendiri + sembunyikan pemain lain, hanya di client)
 local invisible = false          -- diri sendiri
@@ -1692,9 +1992,9 @@ end
 local function homeTab()
     clearContent()
     label("WELCOME TO DiiUi HUB")
-    label("Version 3.4 | Real Executor")
+    label("Version 3.9 | Real Executor")
     label("Executor GUI test: successful!")
-    label("M = Show / Hide GUI  |  F = Fly  |  N = NoClip")
+    label("M = Show / Hide GUI  |  F = Fly  |  G = Trik Fly  |  N = NoClip")
     label("Pilih menu di sebelah kiri.")
     button("Refresh Character", function()
         getCharacter()
@@ -1807,6 +2107,7 @@ local LimitedPresets = {
     {Name="8-Bit Extra Life", AssetId=10159606132, Effect="Native"},
     {Name="8-Bit Tabby Cat", AssetId=10159617728, Effect="Native"},
     {Name="8-Bit Roblox Coin", AssetId=10159622004, Effect="Native"},
+    {Name="8-Bit Crown", AssetId=10159600649, Effect="Native"},
     {Name="Fiery Horns of the Netherworld", AssetId=215718515, Effect="Orange"},
     {Name="Frozen Horns of the Frigid Planes", AssetId=74891470, Effect="Blue"},
     {Name="Poisoned Horns of the Toxic Wasteland", AssetId=1744060292, Effect="GreenFire"},
@@ -3223,7 +3524,7 @@ local CHIP = Color3.fromRGB(48, 35, 70)
 local CARD = Color3.fromRGB(38, 29, 58)
 
 -- forward declarations (dipakai lintas fitur)
-local Fly = {Enabled = false, Speed = 60, Vel = Vector3.zero, Up = 0, Aura = 1, AuraOn = true, WingsOn = true, T = 0, Flat = Vector3.new(0, 0, -1)}
+local Fly = {Enabled = false, Speed = 60, Vel = Vector3.zero, Up = 0, Aura = 1, AuraOn = true, WingsOn = true, T = 0, Flat = Vector3.new(0, 0, -1), AnimOn = true, Style = 1, Spin = 0, TrickN = 0}
 local stopFly
 local updateTempelUI
 local tempelUI = {cards = {}, subs = {}}
@@ -3482,7 +3783,7 @@ end
 -- Tap username -> langsung menempel. Gaya bisa diganti kapan saja saat menempel.
 -- Lepas: lompat, tombol ❌ di layar, atau tombol di menu.
 --====================================
-local Tempel = {Target = nil, StyleIdx = 1, T = 0, Saved = nil, AnimOn = true, Tracks = {}, AnimKey = nil, Predict = true, PredictMul = 1.5, Vel = nil, Precise = true}
+local Tempel = {Target = nil, StyleIdx = 1, T = 0, Saved = nil, AnimOn = true, Tracks = {}, AnimKey = nil, Predict = true, PredictMul = 2.2, Vel = nil, Precise = true}
 local TempelStyles = {
     {Name = "🎒 Backpack (di punggung)", Fn = function(t) return CFrame.new(0, 0.2, 1.3) end},
     {Name = "🐴 Gendong naik punggung", Fn = function(t) return CFrame.new(0, 1.0, 0.9) * CFrame.Angles(math.rad(-12), 0, 0) end},
@@ -3694,7 +3995,7 @@ local function startTempel(player)
             local lead = 0
             if Tempel.Predict then
                 local okp, ping = pcall(function() return LP:GetNetworkPing() end)
-                lead = math.clamp((okp and ping or 0) * Tempel.PredictMul, 0, 0.35)
+                lead = math.clamp((okp and ping or 0) * Tempel.PredictMul, 0, 0.5)
             end
             local base = tr.CFrame + Tempel.Vel * lead
 
@@ -3749,37 +4050,6 @@ UIS.JumpRequest:Connect(function()
 end)
 
 
--- GENDONG ORANG: pemain lain ditampilkan menempel di punggungmu.
--- Hanya terlihat di layarmu sendiri (posisi mereka di server tidak berubah).
-Tempel.Carry = {Target = nil, Conn = nil}
-Tempel.StopCarry = function(msg)
-    if Tempel.Carry.Conn then Tempel.Carry.Conn:Disconnect() end
-    Tempel.Carry.Conn, Tempel.Carry.Target = nil, nil
-    if msg then toast(msg) end
-end
-Tempel.StartCarry = function(player)
-    Tempel.StopCarry()
-    Tempel.Carry.Target = player
-    local t0 = os.clock()
-    Tempel.Carry.Conn = RunService.RenderStepped:Connect(function()
-        local th = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        local me = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-        if player.Parent ~= Players or not (th and me) then
-            Tempel.StopCarry("Gendongan berhenti (pemain hilang)")
-            return
-        end
-        local t = os.clock() - t0
-        local v = me.AssemblyLinearVelocity
-        local spd = Vector3.new(v.X, 0, v.Z).Magnitude
-        local walkAmt = math.min(spd / 16, 1)
-        local bob = math.sin(t * 2) * 0.04 + math.abs(math.sin(t * math.clamp(spd, 0, 24) * 0.6)) * 0.12 * walkAmt
-        th.CFrame = me.CFrame * CFrame.new(0, 1.0 + bob, 0.9) * CFrame.Angles(math.rad(-12), 0, 0)
-        th.AssemblyLinearVelocity = Vector3.zero
-        th.AssemblyAngularVelocity = Vector3.zero
-    end)
-    toast("Menggendong " .. player.Name .. "  (terlihat di layarmu saja)")
-end
-
 Inv.Tempel, Inv.toast, Inv.dn = Tempel, toast, dn
 
 updateTempelUI = function()
@@ -3815,7 +4085,10 @@ local function tempelTab()
     toggleButton("⚡  Anti delay (prediksi gerak)", function() return Tempel.Predict end, function()
         Tempel.Predict = not Tempel.Predict
     end)
-    slider("Kekuatan prediksi delay", 0, 4, Tempel.PredictMul, 0.1, function(v) Tempel.PredictMul = v end, "%.1f")
+    slider("Kekuatan prediksi delay", 0, 6, Tempel.PredictMul, 0.1, function(v) Tempel.PredictMul = v end, "%.1f")
+    label("Tip: kalau masih terasa ada jarak pas target lari kencang, nyalakan "
+        .. "'No Delay' di atas (langsung terkunci, tanpa goyang tambahan) dan "
+        .. "naikkan slider prediksi ini.")
 
     -- kartu status
     local f = Instance.new("Frame")
@@ -3920,21 +4193,14 @@ local function tempelTab()
     end
     if not any then label("Belum ada pemain lain di server.") end
 
-    label("🤲 GENDONG ORANG  (terlihat di layarmu saja)")
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LP then
-            button("🤲  Gendong " .. dn(player), function() Tempel.StartCarry(player) end)
-        end
-    end
-    button("⬇  Turunkan gendongan", function() Tempel.StopCarry("Gendongan diturunkan") end)
-
     label("Lepas: tekan lompat / tombol ❌ di layar / tombol ❌ Lepas.")
     updateTempelUI()
 end
 
 --====================================
 -- FLY & NOCLIP (1 menu) + aura animasi
--- Aura & sayap hanya terlihat di layarmu; gerakan terbang terlihat semua orang.
+-- Pose/animasi badan (Motor6D), posisi & putaran tubuh terlihat SEMUA pemain.
+-- Aura, sayap energi & partikel dibuat lokal, jadi hanya terlihat di layarmu.
 --====================================
 local NoClip = {Enabled = false}
 local noclipSaved = setmetatable({}, {__mode = "k"})
@@ -4155,11 +4421,192 @@ local function shockwave(root)
     task.delay(0.8, function() p:Destroy() end)
 end
 
--- kontrol di layar (HP): naik / turun / stop
+--====================================
+-- ANIMASI GERAKAN FLY
+-- Memutar sendi Motor6D karaktermu (Waist, Neck, bahu, siku, pinggul, lutut).
+-- Posisi anggota badan ikut direplikasi fisika, jadi pemain lain ikut melihatnya.
+--====================================
+local FAL = (function()
+local D2R = math.rad
+local function dv(x, y, z) return Vector3.new(D2R(x or 0), D2R(y or 0), D2R(z or 0)) end
+local function mir(v) return Vector3.new(v.X, -v.Y, -v.Z) end
+local POSE_KEYS = {"RS", "LS", "RE", "LE", "RH", "LH", "RK", "LK", "Neck", "Waist"}
+
+-- arm/fore/leg/shin = sisi kanan, sisi kiri otomatis dicerminkan
+local function mk(arm, fore, leg, shin, neck, waist)
+    return {
+        RS = arm, LS = mir(arm), RE = fore, LE = mir(fore),
+        RH = leg, LH = mir(leg), RK = shin, LK = mir(shin),
+        Neck = neck or Vector3.zero, Waist = waist or Vector3.zero,
+    }
+end
+local function blendPose(a, b, w)
+    if w <= 0.001 then return a end
+    w = math.min(w, 1)
+    local o = {}
+    for _, k in ipairs(POSE_KEYS) do o[k] = a[k]:Lerp(b[k], w) end
+    return o
+end
+
+local FLY_STYLES = {"🦸 Superman", "🕊 Burung", "🚀 Jet / Ninja", "🧘 Santai", "🌀 Gasing"}
+local LEAN_SCALE = {1, 0.9, 1.12, 0.35, 0.55}
+
+local POSE_UP    = mk(dv(172, 0, 10), dv(0, 0, 0), dv(-6, 0, 2), dv(-5, 0, 0))
+local POSE_DOWN  = mk(dv(-30, 0, 20), dv(12, 0, 0), dv(14, 0, 8), dv(-30, 0, 0))
+local POSE_BACK  = mk(dv(20, 0, 45), dv(25, 0, 0), dv(14, 0, 6), dv(-18, 0, 0))
+local POSE_TUCK  = mk(dv(70, 0, 14), dv(105, 0, 0), dv(100, 0, 4), dv(-115, 0, 0))
+local POSE_SPREAD = mk(dv(0, 0, 88), dv(0, 0, 0), dv(0, 0, 14), dv(-6, 0, 0))
+
+local function idlePose(style, t)
+    local sw = math.sin(t * 1.7)
+    if style == 1 then
+        return mk(dv(8 + sw * 4, 0, 30), dv(22, 0, 0), dv(-4, 0, 6), dv(10 + sw * 3, 0, 0), nil, dv(sw * 2, 0, 0))
+    elseif style == 2 then
+        return mk(dv(0, 0, 55 + math.sin(t * 3) * 22), dv(0, 0, 0), dv(-5, 0, 4), dv(8, 0, 0))
+    elseif style == 3 then
+        return mk(dv(-15, 0, 10), dv(10, 0, 0), dv(0, 0, 3), dv(6, 0, 0))
+    elseif style == 4 then
+        return mk(dv(-25 + sw * 3, 0, 22), dv(15, 0, 0), dv(78, 0, 6), dv(-85, 0, 0), nil, dv(-6, 0, 0))
+    end
+    return mk(dv(0, 0, 80 + sw * 4), dv(0, 0, 0), dv(0, 0, 14), dv(-6, 0, 0))
+end
+
+local function flyPose(style, t, frac)
+    local rate = 10 + frac * 6
+    local fl = math.sin(t * rate)
+    if style == 1 then
+        local p = mk(dv(165, 0, 6), dv(0, 0, 0), dv(-6 + fl * 14, 0, 2), dv(-8 - 14 * math.max(0, fl), 0, 0), nil, dv(-8, 0, 0))
+        p.LH = dv(-6 - fl * 14, 0, -2)
+        p.LK = dv(-8 - 14 * math.max(0, -fl), 0, 0)
+        return p
+    elseif style == 2 then
+        local flap = math.sin(t * (7 + frac * 5)) * 38
+        return mk(dv(18, 0, 62 + flap), dv(0, 0, 0), dv(-14, 0, 0), dv(-20, 0, 0))
+    elseif style == 3 then
+        return mk(dv(-72, 0, 6), dv(0, 0, 0), dv(-4, 0, 0), dv(-4, 0, 0), nil, dv(-6, 0, 0))
+    elseif style == 4 then
+        return mk(dv(-35, 0, 28), dv(20, 0, 0), dv(72, 0, 8), dv(-82, 0, 0))
+    end
+    return mk(dv(0, 0, 86), dv(0, 0, 0), dv(0, 0, 14), dv(-6, 0, 0))
+end
+
+local FA = {Joint = {}, Orig = {}, Cur = {}, Active = false, Animate = nil, Clock = 0}
+
+local function setScriptOn(sc, on)
+    local ok = pcall(function() sc.Enabled = on end)
+    if not ok then pcall(function() sc.Disabled = not on end) end
+end
+
+local function faKillTracks(hum)
+    local animator = hum and hum:FindFirstChildOfClass("Animator")
+    if not animator then return end
+    for _, tr in ipairs(animator:GetPlayingAnimationTracks()) do
+        pcall(function() tr:Stop(0.1) end)
+    end
+end
+
+local function faStart(char, hum)
+    if FA.Active then return end
+    FA.Joint, FA.Orig, FA.Cur = {}, {}, {}
+    local map
+    if hum.RigType == Enum.HumanoidRigType.R15 then
+        map = {
+            Waist = {"UpperTorso", "Waist"}, Neck = {"Head", "Neck"},
+            RS = {"RightUpperArm", "RightShoulder"}, LS = {"LeftUpperArm", "LeftShoulder"},
+            RE = {"RightLowerArm", "RightElbow"}, LE = {"LeftLowerArm", "LeftElbow"},
+            RH = {"RightUpperLeg", "RightHip"}, LH = {"LeftUpperLeg", "LeftHip"},
+            RK = {"RightLowerLeg", "RightKnee"}, LK = {"LeftLowerLeg", "LeftKnee"},
+        }
+    else
+        map = {
+            Neck = {"Torso", "Neck"},
+            RS = {"Torso", "Right Shoulder"}, LS = {"Torso", "Left Shoulder"},
+            RH = {"Torso", "Right Hip"}, LH = {"Torso", "Left Hip"},
+        }
+    end
+    for k, pr in pairs(map) do
+        local part = char:FindFirstChild(pr[1])
+        local m = part and part:FindFirstChild(pr[2])
+        if m and m:IsA("Motor6D") then
+            FA.Joint[k], FA.Orig[k] = m, m.C0
+        end
+    end
+    for _, k in ipairs(POSE_KEYS) do FA.Cur[k] = Vector3.zero end
+    -- matikan skrip Animate bawaan supaya tidak menimpa pose
+    local an = char:FindFirstChild("Animate")
+    if an and (an:IsA("LocalScript") or an:IsA("Script")) then
+        FA.Animate = an
+        setScriptOn(an, false)
+    end
+    faKillTracks(hum)
+    FA.Active = true
+end
+
+local function faStop()
+    if not FA.Active then return end
+    for k, m in pairs(FA.Joint) do
+        if m.Parent and FA.Orig[k] then m.C0 = FA.Orig[k] end
+    end
+    if FA.Animate and FA.Animate.Parent then setScriptOn(FA.Animate, true) end
+    FA.Joint, FA.Orig, FA.Cur, FA.Animate = {}, {}, {}, nil
+    FA.Active = false
+end
+
+local function faApply(pose, dt)
+    local a = math.clamp(dt * 10, 0, 1)
+    for _, k in ipairs(POSE_KEYS) do
+        FA.Cur[k] = FA.Cur[k]:Lerp(pose[k], a)
+        local m, o = FA.Joint[k], FA.Orig[k]
+        if m and m.Parent and o then
+            local v = FA.Cur[k]
+            m.C0 = CFrame.new(o.Position) * CFrame.Angles(v.X, v.Y, v.Z) * (o - o.Position)
+        end
+    end
+end
+
+-- gabungan pose: diam -> maju -> mundur -> naik/turun -> strafe -> takeoff -> trik
+local function computePose(t, frac, mv, vy, trick, trickW, takeoffW)
+    local st = Fly.Style
+    local f = math.min(frac, 1)
+    local pose = idlePose(st, t)
+    pose = blendPose(pose, flyPose(st, t, f), math.clamp(-mv.Z, 0, 1) * f)
+    pose = blendPose(pose, POSE_BACK, math.clamp(mv.Z, 0, 1) * f)
+    pose = blendPose(pose, POSE_UP, math.max(vy, 0) * 0.85)
+    pose = blendPose(pose, POSE_DOWN, math.max(-vy, 0) * 0.85)
+    local bank = mv.X * f * D2R(28)
+    if math.abs(bank) > 0.001 then
+        local o = {}
+        for _, k in ipairs(POSE_KEYS) do o[k] = pose[k] end
+        o.RS = o.RS + Vector3.new(0, 0, -bank)
+        o.LS = o.LS + Vector3.new(0, 0, -bank)
+        pose = o
+    end
+    if takeoffW > 0 then pose = blendPose(pose, POSE_UP, takeoffW) end
+    if trick and trickW > 0 then
+        pose = blendPose(pose, (trick.Kind == 2) and POSE_TUCK or POSE_SPREAD, trickW * ((trick.Kind == 1) and 0 or 1))
+    end
+    return pose
+end
+
+return {
+    STYLES = FLY_STYLES, LEAN = LEAN_SCALE, KEYS = POSE_KEYS, FA = FA,
+    start = faStart, stop = faStop, apply = faApply, kill = faKillTracks,
+    compute = computePose, blend = blendPose,
+}
+end)()
+local FA = FAL.FA
+
+local function startTrick()
+    if not Fly.Enabled or Fly.Trick then return end
+    Fly.TrickN += 1
+    Fly.Trick = {Kind = ((Fly.TrickN - 1) % 3) + 1, T0 = os.clock(), Dur = 0.8}
+end
+
+-- kontrol di layar (HP): naik / turun / trik / stop
 local FlyPad = Instance.new("Frame")
 FlyPad.Name = "FlyPad"
-FlyPad.Size = UDim2.fromOffset(150, 128)
-FlyPad.Position = UDim2.new(1, -165, 1, -200)
+FlyPad.Size = UDim2.fromOffset(150, 164)
+FlyPad.Position = UDim2.new(1, -165, 1, -236)
 FlyPad.BackgroundTransparency = 1
 FlyPad.Visible = false
 FlyPad.Parent = Gui
@@ -4206,9 +4653,23 @@ local function flyHold(txt, x, dir)
 end
 flyHold("🔼", 8, 1)
 flyHold("🔽", 78, -1)
+
+local flyTrickBtn = Instance.new("TextButton")
+flyTrickBtn.Size = UDim2.fromOffset(134, 32)
+flyTrickBtn.Position = UDim2.fromOffset(8, 80)
+flyTrickBtn.BackgroundColor3 = PURPLE
+flyTrickBtn.BackgroundTransparency = 0.15
+flyTrickBtn.Text = "🌀 Trik Akrobat"
+flyTrickBtn.TextColor3 = WHITE
+flyTrickBtn.Font = Enum.Font.GothamBold
+flyTrickBtn.TextSize = 12
+flyTrickBtn.Parent = FlyPad
+Instance.new("UICorner", flyTrickBtn).CornerRadius = UDim.new(0, 9)
+flyTrickBtn.MouseButton1Click:Connect(startTrick)
+
 local flyStopBtn = Instance.new("TextButton")
 flyStopBtn.Size = UDim2.fromOffset(134, 38)
-flyStopBtn.Position = UDim2.fromOffset(8, 82)
+flyStopBtn.Position = UDim2.fromOffset(8, 118)
 flyStopBtn.BackgroundColor3 = Color3.fromRGB(190, 50, 80)
 flyStopBtn.BackgroundTransparency = 0.15
 flyStopBtn.Text = "❌ Stop Fly"
@@ -4242,12 +4703,22 @@ local function getMoveLocal()
     return Vector3.zero
 end
 
+local function destroyFlyBody()
+    if Fly.LV then pcall(function() Fly.LV:Destroy() end) end
+    if Fly.Att then pcall(function() Fly.Att:Destroy() end) end
+    Fly.LV, Fly.Att = nil, nil
+end
+
 function stopFly(silent)
     local was = Fly.Enabled
     Fly.Enabled = false
     FlyPad.Visible = false
     clearAura()
+    destroyFlyBody()
+    FAL.stop()
     Fly.Up = 0
+    Fly.Hold = nil
+    Fly.Trick = nil
     if flyConn then flyConn:Disconnect() flyConn = nil end
     local hum = myHumanoid()
     local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
@@ -4264,6 +4735,19 @@ function stopFly(silent)
     if Fly.OnChange then pcall(Fly.OnChange) end
 end
 
+-- nyalakan / matikan animasi saat sedang terbang
+local function setFlyAnim(on)
+    Fly.AnimOn = on
+    if not Fly.Enabled then return end
+    local char = LP.Character
+    local hum = myHumanoid()
+    if on then
+        if char and hum then FAL.start(char, hum) end
+    else
+        FAL.stop()
+    end
+end
+
 local function startFly()
     if Fly.Enabled then return end
     local hum = myHumanoid()
@@ -4271,17 +4755,37 @@ local function startFly()
     if not (hum and root) then toast("Karakter belum tersedia") return end
     if Tempel.Target then stopTempel() end
     Fly.Enabled = true
-    Fly.Vel = Vector3.zero
+    Fly.Vel = Vector3.new(0, 28, 0)
     Fly.T = 0
     Fly.Up = 0
+    Fly.Spin = 0
+    Fly.Hold = nil
+    Fly.Trick = nil
     local cam = workspace.CurrentCamera
     local look = cam and cam.CFrame.LookVector or Vector3.new(0, 0, -1)
     local flat = Vector3.new(look.X, 0, look.Z)
     Fly.Flat = flat.Magnitude > 0.05 and flat.Unit or Vector3.new(0, 0, -1)
     buildAura(root)
     shockwave(root)
-    root.AssemblyLinearVelocity = Vector3.new(0, 28, 0)
+
+    -- penahan posisi: kecepatan dikunci lewat constraint, jadi tidak turun sendiri oleh gravitasi
+    destroyFlyBody()
+    local att = Instance.new("Attachment")
+    att.Name = "DiiUi_FlyAtt"
+    att.Parent = root
+    local lv = Instance.new("LinearVelocity")
+    lv.Name = "DiiUi_FlyLV"
+    lv.Attachment0 = att
+    lv.RelativeTo = Enum.ActuatorRelativeTo.World
+    lv.MaxForce = math.huge
+    lv.VectorVelocity = Fly.Vel
+    lv.Parent = root
+    Fly.Att, Fly.LV = att, lv
+
+    root.AssemblyLinearVelocity = Fly.Vel
+    if Fly.AnimOn and LP.Character then FAL.start(LP.Character, hum) end
     FlyPad.Visible = true
+
     flyConn = RunService.Heartbeat:Connect(function(dt)
         if not Fly.Enabled then return end
         local char = LP.Character
@@ -4303,28 +4807,81 @@ local function startFly()
         local boost = UIS:IsKeyDown(Enum.KeyCode.LeftShift) and 1.8 or 1
 
         local dir = c.CFrame.RightVector * mv.X + c.CFrame.LookVector * (-mv.Z) + Vector3.new(0, up, 0)
+        local moving = dir.Magnitude > 0.05
         local target = Vector3.zero
-        if dir.Magnitude > 0.05 then
+        if moving then
             target = dir.Unit * Fly.Speed * boost * math.min(dir.Magnitude, 1)
-        else
-            target = Vector3.new(0, math.sin(Fly.T * 3) * 2, 0) -- melayang halus saat diam
         end
         Fly.Vel = Fly.Vel:Lerp(target, math.clamp(dt * 8, 0, 1))
-        r.AssemblyLinearVelocity = Fly.Vel
+
+        -- berhenti = diam total di titik itu (tidak melorot, tidak naik-turun)
+        local vel = Fly.Vel
+        if moving then
+            Fly.Hold = nil
+        elseif Fly.Vel.Magnitude < 2 then
+            if not Fly.Hold then Fly.Hold = r.Position end
+            vel = (Fly.Hold - r.Position) * 12
+            if vel.Magnitude > 25 then vel = vel.Unit * 25 end
+            Fly.Vel = Vector3.zero
+        end
+        if Fly.LV then Fly.LV.VectorVelocity = vel end
+        r.AssemblyLinearVelocity = vel
         r.AssemblyAngularVelocity = Vector3.zero
 
         local look2 = c.CFrame.LookVector
         local fl = Vector3.new(look2.X, 0, look2.Z)
         if fl.Magnitude > 0.05 then Fly.Flat = fl.Unit end
         local frac = math.clamp(Fly.Vel.Magnitude / math.max(Fly.Speed, 1), 0, 1.5)
-        local lean = -math.rad(75) * math.min(frac, 1) * math.clamp(-mv.Z, 0, 1)
-            + math.rad(25) * math.min(frac, 1) * math.clamp(mv.Z, 0, 1)
-        local roll = -mv.X * math.rad(25) * math.min(frac, 1)
-        r.CFrame = CFrame.lookAt(r.Position, r.Position + Fly.Flat) * CFrame.Angles(lean, 0, roll)
+        local fm = math.min(frac, 1)
 
-        updateAura(r, math.min(frac, 1))
+        local ls = FAL.LEAN[Fly.Style] or 1
+        local lean = (-math.rad(75) * fm * math.clamp(-mv.Z, 0, 1)
+            + math.rad(25) * fm * math.clamp(mv.Z, 0, 1)) * ls
+        local roll = -mv.X * math.rad(25) * fm
+
+        -- trik akrobat (putaran badan terlihat semua orang)
+        local pre, post = CFrame.identity, CFrame.identity
+        local trick, trickW = Fly.Trick, 0
+        if trick then
+            local p = (os.clock() - trick.T0) / trick.Dur
+            if p >= 1 then
+                Fly.Trick, trick = nil, nil
+            else
+                local e = p * p * (3 - 2 * p)
+                local a = e * math.pi * 2
+                trickW = math.sin(p * math.pi)
+                if trick.Kind == 1 then post = CFrame.Angles(0, a, 0)       -- barrel roll
+                elseif trick.Kind == 2 then pre = CFrame.Angles(-a, 0, 0)  -- salto
+                else pre = CFrame.Angles(0, a * 2, 0) end                  -- putar 2x
+            end
+        end
+
+        if Fly.Style == 5 then Fly.Spin += dt * (2.5 + fm * 5) end
+        local cf = CFrame.lookAt(r.Position, r.Position + Fly.Flat)
+        if Fly.Style == 5 then cf = cf * CFrame.Angles(0, Fly.Spin, 0) end
+        r.CFrame = cf * pre * CFrame.Angles(lean, 0, roll) * post
+
+        -- animasi anggota badan
+        if Fly.AnimOn and FA.Active then
+            FA.Clock += dt
+            if FA.Clock > 0.5 then
+                FA.Clock = 0
+                FAL.kill(h)
+            end
+            local vy = math.clamp(Fly.Vel.Y / math.max(Fly.Speed, 1), -1, 1)
+            local takeoffW = math.clamp(1 - Fly.T / 0.9, 0, 1)
+            local pose = FAL.compute(Fly.T, frac, mv, vy, trick, trickW, takeoffW)
+            -- kepala tetap menghadap depan saat badan miring
+            local neckFix = Vector3.new(-lean * 0.65, 0, 0)
+            local fixed = {}
+            for _, k in ipairs(FAL.KEYS) do fixed[k] = pose[k] end
+            fixed.Neck = fixed.Neck + neckFix
+            FAL.apply(fixed, dt)
+        end
+
+        updateAura(r, fm)
     end)
-    toast("Fly aktif  •  WASD/joystick, Space naik, Ctrl turun")
+    toast("Fly aktif  •  WASD/joystick, Space naik, Ctrl turun, G = trik")
     if Fly.OnChange then pcall(Fly.OnChange) end
 end
 
@@ -4336,6 +4893,8 @@ UIS.InputBegan:Connect(function(input, processed)
     if processed or UIS:GetFocusedTextBox() then return end
     if input.KeyCode == Enum.KeyCode.F then
         if Fly.Enabled then stopFly() else startFly() end
+    elseif input.KeyCode == Enum.KeyCode.G then
+        startTrick()
     elseif input.KeyCode == Enum.KeyCode.N then
         NoClip.Enabled = not NoClip.Enabled
         toast("NoClip " .. (NoClip.Enabled and "ON" or "OFF"))
@@ -4369,7 +4928,17 @@ local function flySection()
     NoClip.OnChange = function() if ncBtn.Parent then paintNc() end end
     slider("Kecepatan Terbang", 10, 300, Fly.Speed, 1, function(v) Fly.Speed = v end)
 
-    label("AURA  (tap = langsung berganti)")
+    label("🎬 ANIMASI GERAKAN  (terlihat semua pemain)")
+    toggleButton("🎬  Animasi Badan", function() return Fly.AnimOn end, function()
+        setFlyAnim(not Fly.AnimOn)
+    end)
+    chipGrid(FAL.STYLES, function() return Fly.Style end, function(i)
+        Fly.Style = i
+        Fly.Spin = 0
+    end, 40)
+    button("🌀  Trik Akrobat (barrel roll / salto / putar)  [G]", function() startTrick() end)
+
+    label("AURA  (hanya terlihat di layarmu)")
     toggleButton("✨  Aura", function() return Fly.AuraOn end, function()
         Fly.AuraOn = not Fly.AuraOn
         local r = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
@@ -4385,7 +4954,7 @@ local function flySection()
         local r = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
         if Fly.Enabled and r then buildAura(r) end
     end, 44)
-    label("PC: WASD gerak, Space naik, Ctrl turun, Shift ngebut.\nHP: joystick + tombol 🔼 🔽 di layar.\nHotkey: F = Fly, N = NoClip.")
+    label("PC: WASD gerak, Space naik, Ctrl turun, Shift ngebut.\nHP: joystick + tombol 🔼 🔽 🌀 di layar.\nHotkey: F = Fly, G = Trik, N = NoClip.\nBerhenti = karakter diam di tempat (tidak turun sendiri).")
 end
 
 -- daftar pemain otomatis ter-refresh saat ada yang masuk / keluar
@@ -6849,32 +7418,6 @@ do
     end
 
     ------------------------------------------------
-    -- 🤲 CARRY (menu sendiri)
-    ------------------------------------------------
-    Inv.carryTab = function()
-        clearContent()
-        label("🤲 CARRY / GENDONG")
-        local cur = Tempel.Carry.Target
-        setSmall(label(cur and ("Sedang menggendong: " .. dn(cur)) or "Belum menggendong siapa pun. Terlihat di layarmu saja."))
-        local n = 0
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LP then
-                n += 1
-                button("🤲  Gendong " .. dn(p), function()
-                    Tempel.StartCarry(p)
-                    Inv.carryTab()
-                end)
-            end
-        end
-        if n == 0 then label("Belum ada pemain lain di server.") end
-        button("⬇  Turunkan gendongan", function()
-            Tempel.StopCarry("Gendongan diturunkan")
-            Inv.carryTab()
-        end)
-        button("🔄  Refresh daftar", Inv.carryTab)
-    end
-
-    ------------------------------------------------
     -- 🌊 JALAN DI ATAS AIR (client-side)
     ------------------------------------------------
     local Water = {On = false, Conn = nil, Part = nil}
@@ -7134,6 +7677,418 @@ do
 end
 
 
+--====================================
+-- MEME SOUNDBOARD (jendela sendiri, terpisah dari menu lain)
+-- Buka/tutup: hotkey B, atau lewat tab "Meme Soundboard".
+-- Suara diputar lokal di layarmu. Kalau "Bagikan" ON, 1 baris kode "[DUS] ..."
+-- dikirim lewat chat; pengguna script ini lainnya menyembunyikan baris itu dan
+-- memutar suaranya dari posisi kepalamu (3D). Pemain tanpa script TIDAK bisa
+-- mendengarnya: suara buatan client tidak pernah sampai ke server.
+--====================================
+do
+    local SoundService = game:GetService("SoundService")
+    local TextChatService = game:GetService("TextChatService")
+    local TAG = "[DUS] "
+    local SB = {Volume = 70, Send = false, Hear = true, LastSend = 0, Heard = {}}
+    local Playing = setmetatable({}, {__mode = "k"})
+    Inv.SB = SB
+
+    -- suara bawaan klien Roblox (indeks dipakai di Inv.SoundList -> Builtin)
+    local BUILTIN = {
+        {"Oof Klasik", "rbxasset://sounds/uuhhh.mp3"},
+        {"Bass Drop", "rbxasset://sounds/bass.mp3"},
+        {"Snap", "rbxasset://sounds/snap.mp3"},
+        {"Victory", "rbxasset://sounds/victory.wav"},
+        {"Kerplunk", "rbxasset://sounds/kerplunk.wav"},
+        {"Splat", "rbxasset://sounds/splat.wav"},
+        {"Tebas Pedang", "rbxasset://sounds/swordslash.wav"},
+        {"Ping Elektronik", "rbxasset://sounds/electronicpingshort.wav"},
+        {"Cipratan Air", "rbxasset://sounds/impact_water.mp3"},
+    }
+
+    local B36 = "0123456789abcdefghijklmnopqrstuvwxyz"
+    local function toB36(n)
+        n = math.floor(n)
+        if n <= 0 then return "0" end
+        local out = ""
+        while n > 0 do
+            local r = n % 36
+            out = B36:sub(r + 1, r + 1) .. out
+            n = (n - r) / 36
+        end
+        return out
+    end
+    local function fromB36(str)
+        local n = 0
+        for c in str:gmatch(".") do
+            local i = B36:find(c, 1, true)
+            if not i then return nil end
+            n = n * 36 + (i - 1)
+        end
+        return n
+    end
+
+    local function playSound(soundId, vol, speed, parent, is3d, announceFail)
+        local snd = Instance.new("Sound")
+        snd.Name = "DiiUi_Sfx"
+        snd.SoundId = soundId
+        snd.Volume = vol
+        snd.PlaybackSpeed = speed
+        if is3d then
+            snd.RollOffMode = Enum.RollOffMode.Linear
+            snd.RollOffMinDistance = 10
+            snd.RollOffMaxDistance = 90
+        end
+        snd.Parent = parent
+        Playing[snd] = true
+        snd.Ended:Connect(function() snd:Destroy() end)
+        snd:Play()
+        task.delay(3, function()
+            if snd.Parent and not snd.IsLoaded then
+                snd:Destroy()
+                if announceFail then notify("Suara gagal dimuat (ID salah / tidak bisa diakses)") end
+            end
+        end)
+        task.delay(25, function() if snd.Parent then snd:Destroy() end end)
+        return snd
+    end
+
+    local function stopAll()
+        for snd in pairs(Playing) do
+            pcall(function() snd:Destroy() end)
+        end
+        table.clear(Playing)
+    end
+
+    local function sendText(text)
+        pcall(function()
+            local ch = TextChatService:FindFirstChild("TextChannels")
+            local general = ch and ch:FindFirstChild("RBXGeneral")
+            if general then
+                general:SendAsync(text)
+            else
+                game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(text, "All")
+            end
+        end)
+    end
+
+    -- def = satu baris dari Inv.SoundList
+    local function playDef(def)
+        local sid, tag
+        local id = tonumber(def.Id)
+        if def.Builtin and BUILTIN[def.Builtin] then
+            sid, tag = BUILTIN[def.Builtin][2], "b" .. def.Builtin
+        elseif id and id > 0 then
+            sid, tag = "rbxassetid://" .. math.floor(id), "a" .. toB36(id)
+        else
+            notify((def.Name or "Sound") .. ": Asset ID belum diisi (edit Inv.SoundList di kode)")
+            return
+        end
+        playSound(sid, SB.Volume / 100 * 2, 1, SoundService, false, true)
+        if SB.Send and os.clock() - SB.LastSend > 1.5 then
+            SB.LastSend = os.clock()
+            sendText(TAG .. tag .. "," .. math.floor(SB.Volume) .. ",100")
+        end
+    end
+
+    ---------------- TERIMA dari pengguna script lain ----------------
+    local function onText(text, plr)
+        if not SB.Hear or not plr or plr == LP then return end
+        if type(text) ~= "string" or text:sub(1, #TAG) ~= TAG then return end
+        local now = os.clock()
+        if SB.Heard[plr.UserId] and now - SB.Heard[plr.UserId] < 1.2 then return end
+        SB.Heard[plr.UserId] = now
+        local what, v, sp = text:sub(#TAG + 1):match("^(%w+),(%d+),(%d+)")
+        if not what then return end
+        local sid
+        if what:sub(1, 1) == "b" then
+            local bi = BUILTIN[tonumber(what:sub(2))]
+            sid = bi and bi[2]
+        elseif what:sub(1, 1) == "a" then
+            local id = fromB36(what:sub(2))
+            sid = id and id > 0 and ("rbxassetid://" .. id) or nil
+        end
+        local head = plr.Character and plr.Character:FindFirstChild("Head")
+        if not (sid and head) then return end
+        local vol = math.clamp((tonumber(v) or 70) / 100 * 2, 0, 1.5)   -- batas volume dari orang lain
+        local speed = math.clamp((tonumber(sp) or 100) / 100, 0.5, 2)
+        playSound(sid, vol, speed, head, true, false)
+    end
+
+    -- sembunyikan baris "[DUS] ..." dari chat milik pengguna script
+    pcall(function()
+        local old = TextChatService.OnIncomingMessage
+        TextChatService.OnIncomingMessage = function(m)
+            local props = old and old(m) or nil
+            if type(m.Text) == "string" and m.Text:sub(1, #TAG) == TAG then
+                props = props or Instance.new("TextChatMessageProperties")
+                props.Text = ""
+                props.PrefixText = ""
+            end
+            return props
+        end
+    end)
+    pcall(function()
+        TextChatService.MessageReceived:Connect(function(m)
+            local src = m.TextSource
+            if src then onText(m.Text, Players:GetPlayerByUserId(src.UserId)) end
+        end)
+    end)
+    local function watch(plr)
+        if plr == LP then return end
+        plr.Chatted:Connect(function(msg) onText(msg, plr) end)
+    end
+    for _, pl in ipairs(Players:GetPlayers()) do watch(pl) end
+    Players.PlayerAdded:Connect(watch)
+    Players.PlayerRemoving:Connect(function(pl) SB.Heard[pl.UserId] = nil end)
+
+    ---------------- JENDELA ----------------
+    local W = compact and 330 or 420
+    local H = compact and 410 or 490
+    local NAVY = Color3.fromRGB(22, 30, 58)
+    local TILE = Color3.fromRGB(18, 52, 100)
+
+    local Win = Instance.new("Frame")
+    Win.Name = "DiiUiSoundboard"
+    Win.Size = UDim2.fromOffset(W, H)
+    Win.Position = UDim2.new(0.5, -W / 2, 0.5, -H / 2)
+    Win.BackgroundColor3 = NAVY
+    Win.BorderSizePixel = 0
+    Win.Active = true
+    Win.Visible = false
+    Win.Parent = Gui
+    Instance.new("UICorner", Win).CornerRadius = UDim.new(0, 14)
+    local stroke = Instance.new("UIStroke", Win)
+    stroke.Color = PINK
+    stroke.Thickness = 1.5
+    stroke.Transparency = 0.35
+
+    local Head = Instance.new("TextButton")
+    Head.Size = UDim2.new(1, -52, 0, 38)
+    Head.BackgroundTransparency = 1
+    Head.Text = "Meme Soundboard"
+    Head.TextColor3 = WHITE
+    Head.Font = Enum.Font.GothamBold
+    Head.TextSize = compact and 17 or 20
+    Head.AutoButtonColor = false
+    Head.Parent = Win
+    makeDraggable(Head, Win)
+
+    local Close = Instance.new("TextButton")
+    Close.Size = UDim2.fromOffset(32, 28)
+    Close.Position = UDim2.new(1, -38, 0, 5)
+    Close.BackgroundColor3 = Color3.fromRGB(190, 50, 80)
+    Close.Text = "✕"
+    Close.TextColor3 = WHITE
+    Close.Font = Enum.Font.GothamBold
+    Close.TextSize = 14
+    Close.Parent = Win
+    Instance.new("UICorner", Close).CornerRadius = UDim.new(0, 8)
+    Close.MouseButton1Click:Connect(function() Win.Visible = false end)
+
+    -- slider volume
+    local volLbl = Instance.new("TextLabel")
+    volLbl.Position = UDim2.fromOffset(14, 44)
+    volLbl.Size = UDim2.fromOffset(70, 24)
+    volLbl.BackgroundTransparency = 1
+    volLbl.Text = "Volume:"
+    volLbl.TextColor3 = WHITE
+    volLbl.Font = Enum.Font.GothamMedium
+    volLbl.TextSize = 14
+    volLbl.TextXAlignment = Enum.TextXAlignment.Left
+    volLbl.Parent = Win
+
+    local track = Instance.new("TextButton")
+    track.Position = UDim2.fromOffset(88, 44)
+    track.Size = UDim2.new(1, -108, 0, 24)
+    track.BackgroundTransparency = 1
+    track.Text = ""
+    track.AutoButtonColor = false
+    track.Parent = Win
+    local bar = Instance.new("Frame")
+    bar.AnchorPoint = Vector2.new(0, 0.5)
+    bar.Position = UDim2.fromScale(0, 0.5)
+    bar.Size = UDim2.new(1, 0, 0, 6)
+    bar.BackgroundColor3 = Color3.fromRGB(220, 224, 235)
+    bar.BorderSizePixel = 0
+    bar.Parent = track
+    Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.fromScale(SB.Volume / 100, 1)
+    fill.BackgroundColor3 = Color3.fromRGB(30, 110, 255)
+    fill.BorderSizePixel = 0
+    fill.Parent = bar
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+    local knob = Instance.new("Frame")
+    knob.AnchorPoint = Vector2.new(0.5, 0.5)
+    knob.Position = UDim2.fromScale(SB.Volume / 100, 0.5)
+    knob.Size = UDim2.fromOffset(18, 18)
+    knob.BackgroundColor3 = Color3.fromRGB(30, 110, 255)
+    knob.BorderSizePixel = 0
+    knob.Parent = track
+    Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+
+    local function setVol(frac)
+        frac = math.clamp(frac, 0, 1)
+        SB.Volume = frac * 100
+        fill.Size = UDim2.fromScale(frac, 1)
+        knob.Position = UDim2.fromScale(frac, 0.5)
+    end
+    local function volFromPos(pos)
+        local w = math.max(track.AbsoluteSize.X, 1)
+        setVol((pos.X - track.AbsolutePosition.X) / w)
+    end
+    local dragging = false
+    track.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            volFromPos(input.Position)
+        end
+    end)
+    UIS.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch) then
+            volFromPos(input.Position)
+        end
+    end)
+    UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    -- kolom cari
+    local search = Instance.new("TextBox")
+    search.Position = UDim2.fromOffset(14, 76)
+    search.Size = UDim2.new(1, -28, 0, 32)
+    search.BackgroundColor3 = TILE
+    search.TextColor3 = WHITE
+    search.PlaceholderColor3 = Color3.fromRGB(130, 150, 190)
+    search.PlaceholderText = "Search sounds..."
+    search.Text = ""
+    search.Font = Enum.Font.Gotham
+    search.TextSize = 13
+    search.ClearTextOnFocus = false
+    search.Parent = Win
+    Instance.new("UICorner", search).CornerRadius = UDim.new(0, 7)
+
+    -- tombol bagikan / dengar
+    local shareBtn, hearBtn
+    local function paintToggles()
+        shareBtn.Text = "🌐 Bagikan: " .. (SB.Send and "ON" or "OFF")
+        shareBtn.BackgroundColor3 = SB.Send and Color3.fromRGB(40, 150, 90) or Color3.fromRGB(65, 39, 105)
+        hearBtn.Text = "👂 Dengar: " .. (SB.Hear and "ON" or "OFF")
+        hearBtn.BackgroundColor3 = SB.Hear and Color3.fromRGB(40, 150, 90) or Color3.fromRGB(65, 39, 105)
+    end
+    local function smallBtn(x, w)
+        local btn = Instance.new("TextButton")
+        btn.Position = x
+        btn.Size = w
+        btn.TextColor3 = WHITE
+        btn.Font = Enum.Font.GothamSemibold
+        btn.TextSize = 12
+        btn.Parent = Win
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+        return btn
+    end
+    shareBtn = smallBtn(UDim2.fromOffset(14, 114), UDim2.new(0.5, -18, 0, 28))
+    hearBtn = smallBtn(UDim2.new(0.5, 4, 0, 114), UDim2.new(0.5, -18, 0, 28))
+    shareBtn.MouseButton1Click:Connect(function()
+        SB.Send = not SB.Send
+        paintToggles()
+        notify(SB.Send and "Bagikan ON: suara dikirim ke pengguna script lain" or "Bagikan OFF")
+    end)
+    hearBtn.MouseButton1Click:Connect(function()
+        SB.Hear = not SB.Hear
+        paintToggles()
+    end)
+    SB.Paint = paintToggles
+    paintToggles()
+
+    -- grid tombol suara
+    local scroll = Instance.new("ScrollingFrame")
+    scroll.Position = UDim2.fromOffset(10, 150)
+    scroll.Size = UDim2.new(1, -20, 1, -160)
+    scroll.BackgroundTransparency = 1
+    scroll.BorderSizePixel = 0
+    scroll.ScrollBarThickness = 4
+    scroll.CanvasSize = UDim2.new()
+    scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    scroll.Parent = Win
+    local grid = Instance.new("UIGridLayout")
+    grid.CellSize = UDim2.new(1 / 3, -6, 0, 64)
+    grid.CellPadding = UDim2.fromOffset(6, 6)
+    grid.SortOrder = Enum.SortOrder.LayoutOrder
+    grid.Parent = scroll
+
+    local tiles = {}
+    local function mkTile(text, color, order)
+        local btn = Instance.new("TextButton")
+        btn.BackgroundColor3 = color
+        btn.Text = text
+        btn.TextColor3 = WHITE
+        btn.Font = Enum.Font.GothamMedium
+        btn.TextSize = 12
+        btn.TextWrapped = true
+        btn.LayoutOrder = order
+        btn.Parent = scroll
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
+        return btn
+    end
+
+    local function rebuild()
+        for _, t in ipairs(tiles) do t.Button:Destroy() end
+        tiles = {}
+        local stop = mkTile("⏹\nStop All", Color3.fromRGB(139, 0, 0), 0)
+        stop.MouseButton1Click:Connect(stopAll)
+        tiles[1] = {Button = stop, Name = "", Stop = true}
+        for i, def in ipairs(Inv.SoundList) do
+            local btn = mkTile((def.Icon or "🎵") .. "\n" .. tostring(def.Name or "Sound"), TILE, i)
+            btn.MouseButton1Click:Connect(function() playDef(def) end)
+            tiles[#tiles + 1] = {Button = btn, Name = string.lower(tostring(def.Name or ""))}
+        end
+    end
+    local function applySearch()
+        local q = string.lower(search.Text or "")
+        for _, t in ipairs(tiles) do
+            t.Button.Visible = t.Stop or q == "" or string.find(t.Name, q, 1, true) ~= nil
+        end
+    end
+    search:GetPropertyChangedSignal("Text"):Connect(applySearch)
+    rebuild()
+
+    Inv.RebuildSounds = function() rebuild() applySearch() end
+    Inv.ToggleSound = function() Win.Visible = not Win.Visible end
+
+    UIS.InputBegan:Connect(function(input, processed)
+        if processed or UIS:GetFocusedTextBox() then return end
+        if input.KeyCode == Enum.KeyCode.B then Win.Visible = not Win.Visible end
+    end)
+    Gui.Destroying:Connect(stopAll)
+
+    ---------------- TAB di hub = launcher ----------------
+    Inv.soundTab = function()
+        clearContent()
+        label("🔊 MEME SOUNDBOARD")
+        label("Soundboard berjalan di jendela sendiri (terpisah dari menu hub). Hotkey: B.")
+        button("🔊  Buka / Tutup Soundboard", function() Win.Visible = not Win.Visible end)
+        toggleButton("🌐  Bagikan ke pengguna script lain", function() return SB.Send end, function()
+            SB.Send = not SB.Send
+            if SB.Paint then SB.Paint() end
+            notify(SB.Send and "Bagikan ON" or "Bagikan OFF")
+        end)
+        toggleButton("👂  Dengar suara pengguna script lain", function() return SB.Hear end, function()
+            SB.Hear = not SB.Hear
+            if SB.Paint then SB.Paint() end
+        end)
+        label("TAMBAH SUARA: cari tulisan \"DAFTAR MEME SOUNDBOARD\" di kode, salin 1 baris, lalu isi Name, Icon, dan Id (angka Asset ID sound).")
+        label("Hanya pengguna script ini yang bisa mendengar suaramu. Pemain tanpa script tidak bisa, karena suara buatan client tidak sampai ke server.")
+        Win.Visible = true
+    end
+end
+
 -- CREATE TABS
 makeTab("⌂  Home", homeTab)
 makeTab("☀  Graphics", graphicsTab)
@@ -7146,7 +8101,6 @@ makeTab("◎  Free Cam", freeCamTab)
 makeTab("🎬  Cinematic Cam", Inv.cinemaTab)
 makeTab("🕊  Fly / NoClip / Speed / Tornado", Inv.movementTab)
 makeTab("💥  Fling", Inv.flingTab)
-makeTab("🤲  Carry", Inv.carryTab)
 makeTab("🌊  Jalan di Air", Inv.waterTab)
 makeTab("🎯  Target", Inv.targetTab)
 makeTab("🛡  Anti Lag / Crash", antiLagTab)
@@ -7158,8 +8112,9 @@ makeTab("🪙  Coin Hutan", coinHutanTab)
 makeTab("🎭  Emote", Inv.emoteTab)
 makeTab("🏃  Animasi", Inv.animTab)
 makeTab("🎵  Musik", Inv.musicTab)
+makeTab("🔊  Meme Soundboard", Inv.soundTab)
 makeTab("🌐  Server", Inv.serverTab)
 
 homeTab()
 
-print("DiiUi HUB V3.8 loaded successfully!")
+print("DiiUi HUB V3.9 loaded successfully!")
